@@ -32,6 +32,29 @@ Install dependencies:
 pnpm install
 ```
 
+## Branch Naming Convention
+
+This project uses a structured branch naming convention to maintain clarity and enable integration with project management tools:
+
+**Format**: `<type>/<ticket-id>-<description>`
+
+**Branch Types**:
+- `feat/` - New features
+- `fix/` - Bug fixes
+- `test/` - Testing and experimentation
+- `chore/` - Maintenance tasks, dependencies, tooling
+- `docs/` - Documentation updates
+- `refactor/` - Code refactoring without functional changes
+
+**Examples**:
+```
+feat/KAN-123-add-user-authentication
+fix/KAN-456-resolve-socket-disconnect
+test/KAN-16-test-jira-integration
+chore/KAN-789-update-dependencies
+docs/KAN-101-api-documentation
+```
+
 ## Development
 
 To develop all apps and packages:
