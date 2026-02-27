@@ -66,12 +66,12 @@ export function MockDraftSimulator() {
     // Simulate AI picks
     setIsAiDrafting(true);
     setTimeout(() => {
-      simulateAiPicks(player.id);
+      simulateAiPicks();    //player.id was given as a parameter to this before i removed it for deployment
       setIsAiDrafting(false);
     }, 800);
   };
 
-  const simulateAiPicks = (lastUserPickId: string) => {
+  const simulateAiPicks = () => {     //lastUserPickId: string was given as a parameter to this before i removed it for deployment
     setAvailablePlayers(prev => {
       const remaining = [...prev];
       const aiPicks: { name: string; team: string; pick: number }[] = [];
