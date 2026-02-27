@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState} from 'react';
 import { BaseballField } from './BaseballField';
 import { Search, Trophy, History, Play, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { ClipboardList, Target, TrendingUp, Zap } from 'lucide-react';
 
 const tools = [

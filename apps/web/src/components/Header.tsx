@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Trophy, Search, Menu, User, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { SearchModal } from './SearchModal';

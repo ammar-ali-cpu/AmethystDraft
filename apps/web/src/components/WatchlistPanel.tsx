@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { Star, Trash2, TrendingUp, X } from 'lucide-react';
 import { useWatchlist } from '../contexts/WatchlistContext';
 import { toast } from 'sonner';

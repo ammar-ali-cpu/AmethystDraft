@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X, Star, TrendingUp, Award, AlertCircle, Plus, Check } from 'lucide-react';
 import { PLAYER_DATABASE, type Player } from '../data/players';
 import { useWatchlist } from '../contexts/WatchlistContext';

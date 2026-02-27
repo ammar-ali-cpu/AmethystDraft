@@ -1,4 +1,3 @@
-import React from 'react';
 import { Trophy, Github, Twitter, Mail } from 'lucide-react';
 
 export function Footer() {

@@ -35,7 +35,6 @@
 // export default App
 
 
-import React from 'react';
 import { RouterProvider } from 'react-router';
 import { router } from './routes';
 import { WatchlistProvider } from './contexts/WatchlistContext';
