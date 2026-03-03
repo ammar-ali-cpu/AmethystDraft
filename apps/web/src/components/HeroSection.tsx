@@ -1,8 +1,11 @@
+import { useNavigate } from "react-router";
 import "./HeroSection.css";
 import type { JSX } from "react/jsx-dev-runtime";
 
 
 export default function HeroSection(): JSX.Element {
+  const navigate = useNavigate();
+  
   return (
     <section className="hero">
       <div className="hero-bg" />
@@ -17,7 +20,7 @@ export default function HeroSection(): JSX.Element {
           valuations, and AI-powered draft recommendations — all in one command center.
         </p>
         <div className="hero-cta">
-          <button className="cta-primary">Get Started</button>
+          <button className="cta-primary" onClick={() => navigate('/signup')}>Get Started</button>
           <button className="cta-outline">View Rankings</button>
         </div>
       </div>

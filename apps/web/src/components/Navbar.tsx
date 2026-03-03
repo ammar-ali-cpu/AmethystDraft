@@ -1,9 +1,10 @@
+import { useNavigate } from 'react-router';
 import { Zap } from "lucide-react";
 import "./Navbar.css";
-import type { JSX } from "react/jsx-dev-runtime";
 
+export default function Navbar() {
+  const navigate = useNavigate();
 
-export default function Navbar(): JSX.Element {
   return (
     <nav className="navbar">
       <div className="navbar-logo">
@@ -11,8 +12,8 @@ export default function Navbar(): JSX.Element {
         <span className="logo-text">DRAFTROOM</span>
       </div>
       <div className="navbar-actions">
-        <button className="btn-ghost">Sign In</button>
-        <button className="btn-primary">Get Started</button>
+        <button className="btn-ghost" onClick={() => navigate('/login')}>Sign In</button>
+        <button className="btn-primary" onClick={() => navigate('/signup')}>Get Started</button>
       </div>
     </nav>
   );
