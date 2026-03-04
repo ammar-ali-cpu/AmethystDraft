@@ -21,6 +21,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth";
+import playersRoutes from "./routes/players";
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/players", playersRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
