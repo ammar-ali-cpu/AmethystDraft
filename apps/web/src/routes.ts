@@ -14,6 +14,6 @@ export const router = createBrowserRouter([
   { path: "signup", Component: Signup },
   { path: "/login", Component: Login },
   { path: "/forgot-password", Component: ForgotPassword },
-  { path: "/leagues", Component: Leagues },
+  { path: "/leagues", Component: Leagues }, 
 ]);
 
