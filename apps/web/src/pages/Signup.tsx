@@ -1,51 +1,34 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Zap, ArrowLeft } from "lucide-react";
+import { registerUser } from "../api/auth";
+import { useAuth } from "../contexts/AuthContext";
 import "./Signup.css";
 
 export default function Signup() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      // TODO: wire to your Express API, e.g.:
-      // const res = await fetch("/api/auth/register", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ displayName, email, password }),
-      // });
-      // if (!res.ok) throw new Error("Registration failed");
-      setSuccess(true);
+      const data = await registerUser(username, email, password);
+      login(data.token, data.user);
+      navigate("/leagues");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
-
-  if (success) {
-    return (
-      <div className="signup-page">
-        <div className="signup-bg" />
-        <div className="signup-success">
-          <Zap size={28} style={{ color: "#a855f7" }} />
-          <h1 className="signup-title">You are in.</h1>
-          <p className="signup-subtitle">
-            Account created for <strong style={{ color: "#f0e6ff" }}>{email}</strong>.
-          </p>
-          <Link to="/login" className="signup-link">Go to sign in</Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="signup-page">
@@ -63,18 +46,37 @@ export default function Signup() {
         <form onSubmit={handleSignup} className="signup-form">
           <div className="signup-field">
             <label className="signup-label">Display Name</label>
-            <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-              required className="signup-input" placeholder="Your name" />
+            <input
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              required
+              className="signup-input"
+              placeholder="Your name"
+            />
           </div>
           <div className="signup-field">
             <label className="signup-label">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              required className="signup-input" placeholder="you@email.com" />
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              className="signup-input"
+              placeholder="you@email.com"
+            />
           </div>
           <div className="signup-field">
             <label className="signup-label">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              required minLength={6} className="signup-input" placeholder="Min 6 characters" />
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="signup-input"
+              placeholder="Min 6 characters"
+            />
           </div>
           {error && <p className="signup-error">{error}</p>}
           <button type="submit" disabled={loading} className="signup-submit">

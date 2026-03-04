@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
+import { forgotPassword } from "../api/auth";
 import "./ForgotPassword.css";
 
 export default function ForgotPassword() {
@@ -14,15 +15,9 @@ export default function ForgotPassword() {
     setError("");
     setLoading(true);
     try {
-      // TODO: wire to your Express API, e.g.:
-      // const res = await fetch("/api/auth/forgot-password", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ email }),
-      // });
-      // if (!res.ok) throw new Error("Failed to send reset link");
+      await forgotPassword(email);
       setSuccess(true);
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
