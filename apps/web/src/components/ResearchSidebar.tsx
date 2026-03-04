@@ -4,9 +4,11 @@ import "./ResearchSidebar.css";
 interface ResearchSidebarProps {
   selectedView: string;
   onSelectView: (view: string) => void;
+  statBasis: "projections" | "last-year" | "3-year-avg";
+  onStatBasisChange: (basis: "projections" | "last-year" | "3-year-avg") => void;
 }
 
-export default function ResearchSidebar({ selectedView, onSelectView }: ResearchSidebarProps) {
+export default function ResearchSidebar({ selectedView, onSelectView, statBasis, onStatBasisChange }: ResearchSidebarProps) {
   const navigationItems = [
     { id: "player-database", label: "Player Database", icon: Database },
     { id: "watchlists", label: "Watchlists", icon: Star },
@@ -38,13 +40,22 @@ export default function ResearchSidebar({ selectedView, onSelectView }: Research
       <div className="sidebar-section">
         <h3 className="sidebar-section-title">STAT BASIS</h3>
         <div className="sidebar-nav">
-          <button className="sidebar-nav-item active">
+          <button 
+            className={`sidebar-nav-item ${statBasis === "projections" ? "active" : ""}`}
+            onClick={() => onStatBasisChange("projections")}
+          >
             Projections
           </button>
-          <button className="sidebar-nav-item">
+          <button 
+            className={`sidebar-nav-item ${statBasis === "last-year" ? "active" : ""}`}
+            onClick={() => onStatBasisChange("last-year")}
+          >
             Last Year
           </button>
-          <button className="sidebar-nav-item">
+          <button 
+            className={`sidebar-nav-item ${statBasis === "3-year-avg" ? "active" : ""}`}
+            onClick={() => onStatBasisChange("3-year-avg")}
+          >
             3-Year Avg
           </button>
         </div>

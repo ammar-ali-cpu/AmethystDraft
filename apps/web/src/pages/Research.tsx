@@ -11,6 +11,7 @@ export default function Research() {
   const [searchQuery, setSearchQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("all");
   const [sortBy, setSortBy] = useState("adp");
+  const [statBasis, setStatBasis] = useState<"projections" | "last-year" | "3-year-avg">("projections");
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
   const [playersError, setPlayersError] = useState("");
@@ -48,7 +49,12 @@ export default function Research() {
     <div className="research-page">
       <AuthNavbar />
       <div className="research-layout">
-        <ResearchSidebar selectedView={selectedView} onSelectView={setSelectedView} />
+        <ResearchSidebar 
+          selectedView={selectedView} 
+          onSelectView={setSelectedView}
+          statBasis={statBasis}
+          onStatBasisChange={setStatBasis}
+        />
         <div className="research-content">
           {selectedView === "player-database" && (
             <>
@@ -67,6 +73,7 @@ export default function Research() {
                   onPositionChange={setPositionFilter}
                   sortBy={sortBy}
                   onSortChange={setSortBy}
+                  statBasis={statBasis}
                 />
               )}
             </>

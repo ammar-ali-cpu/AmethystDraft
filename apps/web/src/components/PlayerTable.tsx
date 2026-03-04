@@ -11,6 +11,7 @@ interface PlayerTableProps {
   onPositionChange: (position: string) => void;
   sortBy: string;
   onSortChange: (sort: string) => void;
+  statBasis?: "projections" | "last-year" | "3-year-avg";
 }
 
 export default function PlayerTable({
@@ -21,6 +22,7 @@ export default function PlayerTable({
   onPositionChange,
   sortBy,
   onSortChange,
+  statBasis = "projections",
 }: PlayerTableProps) {
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
 
@@ -37,8 +39,13 @@ export default function PlayerTable({
   const getCategoryTags = (player: Player) => {
     const tags: string[] = [];
     
-    if (player.projection?.batting) {
-      const { hr = 0, sb = 0, avg = "0", runs = 0, rbi = 0 } = player.projection.batting;
+    // Use appropriate data source based on stat basis
+    const useProjections = statBasis === "projections" || statBasis === "3-year-avg";
+    const battingData = useProjections ? player.projection?.batting : player.stats?.batting;
+    const pitchingData = useProjections ? player.projection?.pitching : player.stats?.pitching;
+    
+    if (battingData) {
+      const { hr = 0, sb = 0, avg = "0", runs = 0, rbi = 0 } = battingData;
       if (hr >= 30) tags.push("HR+");
       if (sb >= 20) tags.push("SB+");
       if (parseFloat(avg) >= 0.290) tags.push("AVG+");
@@ -46,8 +53,8 @@ export default function PlayerTable({
       if (rbi >= 100) tags.push("RBI+");
     }
 
-    if (player.projection?.pitching) {
-      const { strikeouts = 0, wins = 0, saves = 0 } = player.projection.pitching;
+    if (pitchingData) {
+      const { strikeouts = 0, wins = 0, saves = 0 } = pitchingData;
       if (strikeouts >= 200) tags.push("K+");
       if (wins >= 12) tags.push("W+");
       if (saves >= 25) tags.push("SV+");
@@ -91,7 +98,9 @@ export default function PlayerTable({
             <option value="name">Sort: Name</option>
           </select>
 
-          <button className="btn-proj active">PROJ</button>
+          <button className="btn-proj active">
+            {statBasis === "projections" ? "PROJ" : statBasis === "last-year" ? "2025" : "3YR"}
+          </button>
         </div>
       </div>
 
