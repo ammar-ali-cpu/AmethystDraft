@@ -91,7 +91,7 @@ app.get("/", (req, res) => {
   res.send("Amethyst Draft Info API - Online");
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 mongoose
   .connect(process.env.MONGO_URI as string)
