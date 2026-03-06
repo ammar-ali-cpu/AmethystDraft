@@ -42,17 +42,43 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # - name: Build, tag, and push API image to Amazon ECR
-      #   env:
-      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-      #     ECR_REPOSITORY: amethyst-api
-      #     IMAGE_TAG: latest
-      #   run: |
-      #     # Build the docker container and push it to ECR
-      #     # Note: This assumes you have a Dockerfile in apps/api/
-      #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f apps/api/Dockerfile .
-      #     docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      - name: Build, tag, and push API image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: amethyst-api
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f apps/api/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Deploy Frontend to S3
         run: |
           aws s3 sync apps/web/dist s3://amethyst-web-prod --delete
+
+      - name: Trigger App Runner Deployment
+        env:
+          APP_RUNNER_SERVICE_NAME: amethyst-api-prod
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${APP_RUNNER_SERVICE_NAME}'].ServiceArn | [0]" --output text)
+          
+          if [ -z "$SERVICE_ARN" ] || [ "$SERVICE_ARN" = "None" ]; then
+            echo "Error: App Runner service '${APP_RUNNER_SERVICE_NAME}' not found."
+            exit 1
+          fi
+
+          echo "Found Service ARN: $SERVICE_ARN"
+
+          # Wait up to 5 minutes for any existing operations to finish
+          for i in {1..10}; do
+            STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --query "Service.Status" --output text)
+            if [ "$STATUS" = "RUNNING" ]; then
+              echo "Service is RUNNING. Starting deployment..."
+              aws apprunner start-deployment --service-arn "$SERVICE_ARN"
+              exit 0
+            fi
+            echo "Service is currently $STATUS. Waiting 30s before retry ($i/10)..."
+            sleep 30
+          done
+
+          echo "Error: Service did not return to RUNNING state in time."
+          exit 1

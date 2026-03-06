@@ -5,7 +5,10 @@ import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import Leagues from './pages/Leagues';
 import Research from './pages/Research';
-import LeagueCreate from "./pages/LeaguesCreate";
+
+
+
+
 
 export const router = createBrowserRouter([
   { path: "/", Component: HomePage,  },
@@ -15,5 +18,8 @@ export const router = createBrowserRouter([
   { path: "/leagues", Component: Leagues },
   { path: "/leagues/create", Component: LeagueCreate },
   { path: "/research", Component: Research },
+  { path: "/my-draft", Component: MyDraft },
+  { path: "/command-center", Component: CommandCenter },
+
 ]);
 
