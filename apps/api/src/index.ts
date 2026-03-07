@@ -70,6 +70,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth";
 import playersRoutes from "./routes/players";
+import engineRoutes from "./routes/engine";
 
 dotenv.config();
 
@@ -92,7 +93,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-app.use("/api/players", playersRoutes);  // ← changed from playersRoutes to match your file
+app.use("/api/players", playersRoutes);
+app.use("/api/engine", engineRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Draftroom API is running" });
