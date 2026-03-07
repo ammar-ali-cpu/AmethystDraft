@@ -420,6 +420,15 @@
   gap: 0.6rem;
 }
 
+.player-name-col {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
 .player-headshot {
   width: 32px;
   height: 32px;
@@ -501,7 +510,7 @@
   border: none;
   cursor: pointer;
   color: #4a3a60;
-  padding: 0.25rem;
+  padding: 0.1rem;
   display: flex;
   align-items: center;
   border-radius: 4px;
@@ -517,6 +526,36 @@
   padding: 3rem;
   color: #4a3a60;
   font-style: italic;
+}
+
+/* ── Notes column ── */
+.th-notes { min-width: 160px; }
+
+.td-notes { position: relative; }
+
+.pt-note-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #9b8ab4;
+  font-size: 0.78rem;
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.pt-note-input::placeholder { color: #3d2f55; }
+
+.pt-note-input:focus {
+  color: #e2d9f3;
+  background: rgba(139, 92, 246, 0.08);
+  border-radius: 4px;
+  padding: 2px 4px;
 }
 
 .pt-footer {

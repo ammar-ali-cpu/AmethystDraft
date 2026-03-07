@@ -1,6 +1,7 @@
 import { Router, RequestHandler, Response } from "express";
 import League from "../models/League";
 import RosterEntry from "../models/RosterEntry";
+import PlayerNote from "../models/PlayerNote";
 import authMiddleware, { AuthRequest } from "../middleware/auth";
 
 const router: Router = Router();
@@ -266,6 +267,52 @@ const removeRosterEntry: RequestHandler = async (
   }
 };
 
+// ─── GET /api/leagues/:leagueId/notes ─────────────────────────────────────────
+
+const getNotes: RequestHandler = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
+  try {
+    const notes = await PlayerNote.find({
+      leagueId: req.params.id,
+      userId: req.user!._id,
+    });
+    const map: Record<string, string> = {};
+    for (const n of notes) {
+      map[n.externalPlayerId] = n.content;
+    }
+    res.json(map);
+  } catch (err) {
+    console.error("Get notes error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ─── PUT /api/leagues/:leagueId/notes/:playerId ────────────────────────────────
+
+const upsertNote: RequestHandler = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { content } = req.body as { content: string };
+    const note = await PlayerNote.findOneAndUpdate(
+      {
+        leagueId: req.params.id,
+        userId: req.user!._id,
+        externalPlayerId: req.params.playerId,
+      },
+      { content: content ?? "" },
+      { upsert: true, new: true },
+    );
+    res.json({ content: note.content });
+  } catch (err) {
+    console.error("Upsert note error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // ─── Route registration ────────────────────────────────────────────────────────
 
 router.post("/", createLeague);
@@ -275,5 +322,7 @@ router.patch("/:id", updateLeague);
 router.get("/:id/roster", getRoster);
 router.post("/:id/roster", addRosterEntry);
 router.delete("/:id/roster/:entryId", removeRosterEntry);
+router.get("/:id/notes", getNotes);
+router.put("/:id/notes/:playerId", upsertNote);
 
 export default router;

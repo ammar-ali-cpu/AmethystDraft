@@ -7,6 +7,7 @@ import type { Player } from "../types/player";
 import { getPlayers, getPlayersCached } from "../api/players";
 import { useSelectedPlayer } from "../contexts/SelectedPlayerContext";
 import { useLeague } from "../contexts/LeagueContext";
+import { usePlayerNotes } from "../contexts/PlayerNotesContext";
 import "./Research.css";
 
 export default function Research() {
@@ -15,6 +16,7 @@ export default function Research() {
   const navigate = useNavigate();
   const { setSelectedPlayer } = useSelectedPlayer();
   const { league } = useLeague();
+  const { getNote, setNote } = usePlayerNotes();
   const [selectedView, setSelectedView] = useState("player-database");
   const [searchQuery, setSearchQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("all");
@@ -118,6 +120,8 @@ export default function Research() {
                   onStatBasisChange={setStatBasis}
                   onPlayerClick={handlePlayerClick}
                   scoringCategories={league?.scoringCategories}
+                  getNote={getNote}
+                  onNoteChange={setNote}
                 />
               )}
             </>

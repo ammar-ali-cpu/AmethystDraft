@@ -7,6 +7,7 @@ import type { League } from "../contexts/LeagueContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useWatchlist } from "../contexts/WatchlistContext";
 import { useSelectedPlayer } from "../contexts/SelectedPlayerContext";
+import { usePlayerNotes } from "../contexts/PlayerNotesContext";
 import type { Player } from "../types/player";
 import { getPlayers } from "../api/players";
 import { addRosterEntry, getRoster, removeRosterEntry } from "../api/roster";
@@ -71,7 +72,8 @@ function getStatByCategory(
     if (name === "W" || name === "WINS") return p.wins;
     if (name === "K" || name === "SO") return p.strikeouts;
     if (name === "ERA") return parseFloat(p.era) || 0;
-    if (name === "WHIP" || name === "WALKS + HITS PER IP") return parseFloat(p.whip) || 0;
+    if (name === "WHIP" || name === "WALKS + HITS PER IP")
+      return parseFloat(p.whip) || 0;
     if (name === "SV" || name === "SAVES") return p.saves;
     if (name === "IP") return parseFloat(p.innings) || 0;
     return 0;
@@ -375,7 +377,23 @@ function LeftPanel({
                   posMarket.supply.length > 0 ? (
                     posMarket.supply.map(({ tier, count, avgVal }) => (
                       <tr key={tier}>
-                        <td className="tier-cell"><span className="pac-tier-badge" style={{ background: (["#a855f7","#6366f1","#22c55e","#f59e0b","#6b7280"])[tier - 1] ?? "#6b7280" }}>{tier}</span></td>
+                        <td className="tier-cell">
+                          <span
+                            className="pac-tier-badge"
+                            style={{
+                              background:
+                                [
+                                  "#a855f7",
+                                  "#6366f1",
+                                  "#22c55e",
+                                  "#f59e0b",
+                                  "#6b7280",
+                                ][tier - 1] ?? "#6b7280",
+                            }}
+                          >
+                            {tier}
+                          </span>
+                        </td>
                         <td>{count}</td>
                         <td>{avgVal != null ? `$${avgVal}` : "—"}</td>
                       </tr>
@@ -530,6 +548,7 @@ function AuctionCenter({
   const { league } = useLeague();
   const { token } = useAuth();
   const { isInWatchlist } = useWatchlist();
+  const { getNote, setNote } = usePlayerNotes();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -538,7 +557,11 @@ function AuctionCenter({
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+      if (
+        e.key === "/" &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
@@ -553,9 +576,6 @@ function AuctionCenter({
   const [draftedToSlot, setDraftedToSlot] = useState("");
   const [statView, setStatView] = useState<"hitting" | "pitching">("pitching");
   const [submitting, setSubmitting] = useState(false);
-  const [playerNotes, setPlayerNotes] = useState<Map<string, string>>(
-    new Map(),
-  );
   const [redoStack, setRedoStack] = useState<RosterEntry[]>([]);
 
   // Seed "Won By" default when league loads
@@ -842,9 +862,7 @@ function AuctionCenter({
       filled.set(e.rosterSlot, (filled.get(e.rosterSlot) ?? 0) + 1);
     });
     return new Set(
-      slots.filter(
-        (s) => (filled.get(s) ?? 0) < (league.rosterSlots[s] ?? 1),
-      ),
+      slots.filter((s) => (filled.get(s) ?? 0) < (league.rosterSlots[s] ?? 1)),
     );
   }
 
@@ -866,7 +884,7 @@ function AuctionCenter({
     if (slotOptions.length > 0 && !slotOptions.includes(draftedToSlot)) {
       setDraftedToSlot(slotOptions[0]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPlayer?.id, wonBy]);
 
   return (
@@ -981,7 +999,9 @@ function AuctionCenter({
               <div className="pac-meta-row">
                 <div className="pac-stat">
                   <span className="pac-stat-label">Position</span>
-                  <span className="pac-stat-value">{selectedPlayer.position}</span>
+                  <span className="pac-stat-value">
+                    {selectedPlayer.position}
+                  </span>
                 </div>
                 <div className="pac-stat">
                   <span className="pac-stat-label">Team</span>
@@ -989,11 +1009,23 @@ function AuctionCenter({
                 </div>
                 <div className="pac-stat">
                   <span className="pac-stat-label">Tier</span>
-                  <span className="pac-stat-value pac-tier-badge" style={{ background: (["#a855f7","#6366f1","#22c55e","#f59e0b","#6b7280"])[selectedPlayer.tier - 1] ?? "#6b7280" }}>{selectedPlayer.tier}</span>
+                  <span
+                    className="pac-stat-value pac-tier-badge"
+                    style={{
+                      background:
+                        ["#a855f7", "#6366f1", "#22c55e", "#f59e0b", "#6b7280"][
+                          selectedPlayer.tier - 1
+                        ] ?? "#6b7280",
+                    }}
+                  >
+                    {selectedPlayer.tier}
+                  </span>
                 </div>
                 <div className="pac-stat">
                   <span className="pac-stat-label">Proj</span>
-                  <span className="pac-stat-value green">${selectedPlayer.value}</span>
+                  <span className="pac-stat-value green">
+                    ${selectedPlayer.value}
+                  </span>
                 </div>
                 <div className="pac-stat">
                   <span className="pac-stat-label">ADP</span>
@@ -1008,17 +1040,10 @@ function AuctionCenter({
             <textarea
               className="pac-notes"
               value={
-                playerNotes.get(selectedPlayer.id) ??
-                selectedPlayer.outlook ??
-                ""
+                (getNote(selectedPlayer.id) || selectedPlayer.outlook) ?? ""
               }
               onChange={(e) => {
-                const val = e.target.value;
-                setPlayerNotes((prev) => {
-                  const next = new Map(prev);
-                  next.set(selectedPlayer.id, val);
-                  return next;
-                });
+                setNote(selectedPlayer.id, e.target.value);
               }}
               placeholder="Add scouting notes..."
               rows={2}
@@ -1058,11 +1083,17 @@ function AuctionCenter({
                   const raw = selectedPlayer
                     ? getStatByCategory(selectedPlayer, cat.name, "pitching")
                     : 0;
-                  const isRate = ["ERA", "WHIP", "WALKS + HITS PER IP"].includes(
-                    cat.name.toUpperCase(),
-                  );
+                  const isRate = [
+                    "ERA",
+                    "WHIP",
+                    "WALKS + HITS PER IP",
+                  ].includes(cat.name.toUpperCase());
                   const display =
-                    raw === 0 ? "--" : isRate ? raw.toFixed(2) : String(Math.round(raw));
+                    raw === 0
+                      ? "--"
+                      : isRate
+                        ? raw.toFixed(2)
+                        : String(Math.round(raw));
                   return (
                     <div key={cat.name} className="stat-box">
                       <div className="sb-label">{label}</div>
@@ -1099,8 +1130,7 @@ function AuctionCenter({
             <div className="pac-stat-boxes">
               {hittingCats.length > 0 ? (
                 hittingCats.map((cat) => {
-                  const label =
-                    cat.name.match(/\(([^)]+)\)$/)?.[1] ?? cat.name;
+                  const label = cat.name.match(/\(([^)]+)\)$/)?.[1] ?? cat.name;
                   const raw = selectedPlayer
                     ? getStatByCategory(selectedPlayer, cat.name, "batting")
                     : 0;
@@ -1251,7 +1281,10 @@ function AuctionCenter({
             <div className="log-field">
               <label className="log-label">DRAFTED TO SLOT</label>
               <select
-                className={"log-select" + (slotOptions.length === 0 ? " log-select--warn" : "")}
+                className={
+                  "log-select" +
+                  (slotOptions.length === 0 ? " log-select--warn" : "")
+                }
                 value={draftedToSlot}
                 onChange={(e) => setDraftedToSlot(e.target.value)}
               >
@@ -1268,7 +1301,9 @@ function AuctionCenter({
           <button
             className="log-result-btn"
             onClick={() => void handleLogResult()}
-            disabled={submitting || !wonBy || !finalPrice || slotOptions.length === 0}
+            disabled={
+              submitting || !wonBy || !finalPrice || slotOptions.length === 0
+            }
           >
             {submitting ? "Logging…" : "Log Result"}
           </button>

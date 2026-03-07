@@ -18,6 +18,8 @@ interface PlayerTableProps {
   onStatBasisChange?: (basis: StatBasis) => void;
   onPlayerClick?: (player: Player) => void;
   scoringCategories?: { name: string; type: "batting" | "pitching" }[];
+  getNote?: (playerId: string) => string;
+  onNoteChange?: (playerId: string, note: string) => void;
 }
 
 type DisplayBatting = {
@@ -215,8 +217,43 @@ function getCategoryTags(
   return tags;
 }
 
+function NoteCell({
+  playerId,
+  getNote,
+  onNoteChange,
+}: {
+  playerId: string;
+  playerName: string;
+  tags: string[];
+  getNote: (id: string) => string;
+  onNoteChange: (id: string, note: string) => void;
+}) {
+  const [value, setValue] = useState(() => getNote(playerId));
+
+  // Sync if the note changes externally (e.g. loaded from DB after mount)
+  const contextNote = getNote(playerId);
+  useEffect(() => {
+    setValue(contextNote);
+  }, [contextNote]);
+
+  return (
+    <input
+      className="pt-note-input"
+      value={value}
+      onChange={(e) => {
+        setValue(e.target.value);
+        onNoteChange(playerId, e.target.value);
+      }}
+      placeholder="Add note..."
+      title={value}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+      }}
+    />
+  );
+}
+
 function getValDiff(player: Player): number {
-  // Val diff = projected value vs ADP-implied value (placeholder: value - adp-based estimate)
   const adpValue = Math.max(1, Math.round(50 - player.adp * 0.3));
   return player.value - adpValue;
 }
@@ -235,25 +272,45 @@ function getDisplayStatValue(
   if (catType === "batting") {
     if (!bat && !player.stats?.batting) return "-";
     switch (n) {
-      case "HR": return String(bat?.hr ?? "-");
-      case "RBI": return String(bat?.rbi ?? "-");
-      case "R": case "RUNS": return String(bat?.runs ?? "-");
-      case "SB": return String(bat?.sb ?? "-");
-      case "AVG": return bat?.avg ?? "-";
-      case "OBP": return player.stats?.batting?.obp ?? "-";
-      case "SLG": return player.stats?.batting?.slg ?? "-";
-      default: return "-";
+      case "HR":
+        return String(bat?.hr ?? "-");
+      case "RBI":
+        return String(bat?.rbi ?? "-");
+      case "R":
+      case "RUNS":
+        return String(bat?.runs ?? "-");
+      case "SB":
+        return String(bat?.sb ?? "-");
+      case "AVG":
+        return bat?.avg ?? "-";
+      case "OBP":
+        return player.stats?.batting?.obp ?? "-";
+      case "SLG":
+        return player.stats?.batting?.slg ?? "-";
+      default:
+        return "-";
     }
   } else {
     if (!pit && !player.stats?.pitching) return "-";
     switch (n) {
-      case "W": case "WINS": return String(pit?.wins ?? "-");
-      case "K": case "SO": return String(pit?.strikeouts ?? "-");
-      case "ERA": return pit?.era ?? "-";
-      case "WHIP": case "WALKS + HITS PER IP": return pit?.whip ?? "-";
-      case "SV": case "SAVES": return String(pit?.saves ?? "-");
-      case "IP": return player.stats?.pitching?.innings ?? "-";
-      default: return "-";
+      case "W":
+      case "WINS":
+        return String(pit?.wins ?? "-");
+      case "K":
+      case "SO":
+        return String(pit?.strikeouts ?? "-");
+      case "ERA":
+        return pit?.era ?? "-";
+      case "WHIP":
+      case "WALKS + HITS PER IP":
+        return pit?.whip ?? "-";
+      case "SV":
+      case "SAVES":
+        return String(pit?.saves ?? "-");
+      case "IP":
+        return player.stats?.pitching?.innings ?? "-";
+      default:
+        return "-";
     }
   }
 }
@@ -270,6 +327,8 @@ export default function PlayerTable({
   onStatBasisChange,
   onPlayerClick,
   scoringCategories,
+  getNote,
+  onNoteChange,
 }: PlayerTableProps) {
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const [starredOnly, setStarredOnly] = useState(false);
@@ -289,7 +348,11 @@ export default function PlayerTable({
   const searchInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+      if (
+        e.key === "/" &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
@@ -438,14 +501,14 @@ export default function PlayerTable({
               {Array.from({ length: numStatCols }, (_, i) => {
                 const b = batCols[i];
                 const p = pitCols[i];
-                const label = b && p ? `${b}/${p}` : b ?? p ?? "";
+                const label = b && p ? `${b}/${p}` : (b ?? p ?? "");
                 return (
                   <th key={i} className={i === 0 ? "th-avg" : "th-stat"}>
                     {label}
                   </th>
                 );
               })}
-              <th className="th-tags">Tags</th>
+              <th className="th-notes">Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -494,7 +557,18 @@ export default function PlayerTable({
                           src={player.headshot}
                           name={player.name}
                         />
-                        <span className="player-name">{player.name}</span>
+                        <div className="player-name-col">
+                          <span className="player-name">{player.name}</span>
+                          {tags.length > 0 && (
+                            <div className="tag-list">
+                              {tags.map((t) => (
+                                <span key={t} className="tag">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
 
@@ -522,22 +596,39 @@ export default function PlayerTable({
                       <td key={i} className="td-stat">
                         {isBatter
                           ? batCols[i]
-                            ? getDisplayStatValue(batCols[i], "batting", bat, pit, player)
+                            ? getDisplayStatValue(
+                                batCols[i],
+                                "batting",
+                                bat,
+                                pit,
+                                player,
+                              )
                             : "-"
                           : pitCols[i]
-                            ? getDisplayStatValue(pitCols[i], "pitching", bat, pit, player)
+                            ? getDisplayStatValue(
+                                pitCols[i],
+                                "pitching",
+                                bat,
+                                pit,
+                                player,
+                              )
                             : "-"}
                       </td>
                     ))}
 
-                    <td className="td-tags">
-                      <div className="tag-list">
-                        {tags.map((t) => (
-                          <span key={t} className="tag">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
+                    <td
+                      className="td-notes"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {getNote && onNoteChange && (
+                        <NoteCell
+                          playerId={player.id}
+                          playerName={player.name}
+                          tags={tags}
+                          getNote={getNote}
+                          onNoteChange={onNoteChange}
+                        />
+                      )}
                     </td>
                   </tr>
                 );
