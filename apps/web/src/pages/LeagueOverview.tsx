@@ -214,9 +214,15 @@ export default function LeagueOverview() {
   const [loadingRoster, setLoadingRoster] = useState(true);
   const [sortCat, setSortCat] = useState<string>("HR");
   const [sortAsc, setSortAsc] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
 
-  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+  const showToast = (
+    message: string,
+    type: "success" | "error" | "info" = "success",
+  ) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -293,7 +299,9 @@ export default function LeagueOverview() {
       await removeRosterEntry(league.id, entryId, token);
       showToast(`✕ Removed ${entry?.playerName ?? "pick"}`, "info");
     } catch {
-      getRoster(league.id, token).then(setEntries).catch(() => {});
+      getRoster(league.id, token)
+        .then(setEntries)
+        .catch(() => {});
       showToast("Failed to remove pick", "error");
     }
   };

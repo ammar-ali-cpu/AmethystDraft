@@ -193,7 +193,10 @@ function resolveDisplayStats(
   return applyDummyAdjustments(bat, pit, statBasis);
 }
 
-function getCategoryTags(bat: DisplayBatting | undefined, pit: DisplayPitching | undefined): string[] {
+function getCategoryTags(
+  bat: DisplayBatting | undefined,
+  pit: DisplayPitching | undefined,
+): string[] {
   const tags: string[] = [];
 
   if (bat) {
@@ -258,17 +261,19 @@ export default function PlayerTable({
 
   const rowData = useMemo(
     () =>
-      (fullyRendered ? displayed : displayed.slice(0, INITIAL_ROWS)).map((player) => {
-        const { bat, pit } = resolveDisplayStats(player, statBasis);
-        return {
-          player,
-          bat,
-          pit,
-          isBatter: !!bat || !pit,
-          tags: getCategoryTags(bat, pit),
-          valDiff: getValDiff(player),
-        };
-      }),
+      (fullyRendered ? displayed : displayed.slice(0, INITIAL_ROWS)).map(
+        (player) => {
+          const { bat, pit } = resolveDisplayStats(player, statBasis);
+          return {
+            player,
+            bat,
+            pit,
+            isBatter: !!bat || !pit,
+            tags: getCategoryTags(bat, pit),
+            valDiff: getValDiff(player),
+          };
+        },
+      ),
     [displayed, statBasis, fullyRendered],
   );
 
@@ -382,87 +387,97 @@ export default function PlayerTable({
                 </td>
               </tr>
             )}
-            {rowData.map(({ player, bat, pit, isBatter, tags, valDiff }, index) => {
-              const isStarred = isInWatchlist(player.id);
+            {rowData.map(
+              ({ player, bat, pit, isBatter, tags, valDiff }, index) => {
+                const isStarred = isInWatchlist(player.id);
 
-              return (
-                <tr
-                  key={player.id}
-                  className={"pt-row" + (isStarred ? " pt-row--starred" : "") + (onPlayerClick ? " pt-row--clickable" : "")}
-                  onClick={onPlayerClick ? () => onPlayerClick(player) : undefined}
-                >
-                  <td className="td-rank">{index + 1}</td>
-
-                  <td className="td-star">
-                    <button
-                      className={"btn-star " + (isStarred ? "starred" : "")}
-                      onClick={() => toggleWatchlist(player)}
-                      title={
-                        isStarred ? "Remove from watchlist" : "Add to watchlist"
-                      }
-                    >
-                      <Star size={15} fill={isStarred ? "#fbbf24" : "none"} />
-                    </button>
-                  </td>
-
-                  <td className="td-player">
-                    <div className="player-cell">
-                      <PlayerHeadshot
-                        src={player.headshot}
-                        name={player.name}
-                      />
-                      <span className="player-name">{player.name}</span>
-                    </div>
-                  </td>
-
-                  <td className="td-pos">{player.position}</td>
-                  <td className="td-team">{player.team}</td>
-
-                  <td className="td-tier">
-                    <TierBadge tier={player.tier} />
-                  </td>
-
-                  <td className="td-adp">{player.adp}</td>
-
-                  <td className="td-value">
-                    <span className="value-chip">${player.value}</span>
-                  </td>
-
-                  <td
-                    className={"td-valdiff " + (valDiff >= 0 ? "pos" : "neg")}
+                return (
+                  <tr
+                    key={player.id}
+                    className={
+                      "pt-row" +
+                      (isStarred ? " pt-row--starred" : "") +
+                      (onPlayerClick ? " pt-row--clickable" : "")
+                    }
+                    onClick={
+                      onPlayerClick ? () => onPlayerClick(player) : undefined
+                    }
                   >
-                    {valDiff >= 0 ? "+" : ""}
-                    {valDiff}
-                  </td>
+                    <td className="td-rank">{index + 1}</td>
 
-                  <td className="td-stat">
-                    {isBatter ? (bat?.avg ?? "-") : (pit?.era ?? "-")}
-                  </td>
-                  <td className="td-stat">
-                    {isBatter ? (bat?.hr ?? "-") : (pit?.strikeouts ?? "-")}
-                  </td>
-                  <td className="td-stat">
-                    {isBatter ? (bat?.rbi ?? "-") : (pit?.wins ?? "-")}
-                  </td>
-                  <td className="td-stat">
-                    {isBatter ? (bat?.runs ?? "-") : (pit?.saves ?? "-")}
-                  </td>
-                  <td className="td-stat">
-                    {isBatter ? (bat?.sb ?? "-") : (pit?.whip ?? "-")}
-                  </td>
+                    <td className="td-star">
+                      <button
+                        className={"btn-star " + (isStarred ? "starred" : "")}
+                        onClick={() => toggleWatchlist(player)}
+                        title={
+                          isStarred
+                            ? "Remove from watchlist"
+                            : "Add to watchlist"
+                        }
+                      >
+                        <Star size={15} fill={isStarred ? "#fbbf24" : "none"} />
+                      </button>
+                    </td>
 
-                  <td className="td-tags">
-                    <div className="tag-list">
-                      {tags.map((t) => (
-                        <span key={t} className="tag">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                    <td className="td-player">
+                      <div className="player-cell">
+                        <PlayerHeadshot
+                          src={player.headshot}
+                          name={player.name}
+                        />
+                        <span className="player-name">{player.name}</span>
+                      </div>
+                    </td>
+
+                    <td className="td-pos">{player.position}</td>
+                    <td className="td-team">{player.team}</td>
+
+                    <td className="td-tier">
+                      <TierBadge tier={player.tier} />
+                    </td>
+
+                    <td className="td-adp">{player.adp}</td>
+
+                    <td className="td-value">
+                      <span className="value-chip">${player.value}</span>
+                    </td>
+
+                    <td
+                      className={"td-valdiff " + (valDiff >= 0 ? "pos" : "neg")}
+                    >
+                      {valDiff >= 0 ? "+" : ""}
+                      {valDiff}
+                    </td>
+
+                    <td className="td-stat">
+                      {isBatter ? (bat?.avg ?? "-") : (pit?.era ?? "-")}
+                    </td>
+                    <td className="td-stat">
+                      {isBatter ? (bat?.hr ?? "-") : (pit?.strikeouts ?? "-")}
+                    </td>
+                    <td className="td-stat">
+                      {isBatter ? (bat?.rbi ?? "-") : (pit?.wins ?? "-")}
+                    </td>
+                    <td className="td-stat">
+                      {isBatter ? (bat?.runs ?? "-") : (pit?.saves ?? "-")}
+                    </td>
+                    <td className="td-stat">
+                      {isBatter ? (bat?.sb ?? "-") : (pit?.whip ?? "-")}
+                    </td>
+
+                    <td className="td-tags">
+                      <div className="tag-list">
+                        {tags.map((t) => (
+                          <span key={t} className="tag">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              },
+            )}
           </tbody>
         </table>
       </div>

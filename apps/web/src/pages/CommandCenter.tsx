@@ -175,9 +175,7 @@ function DraftLog({
         DRAFT LOG
       </div>
       <div className="draft-log-list">
-        {sorted.length === 0 && (
-          <div className="dl-empty">No picks yet.</div>
-        )}
+        {sorted.length === 0 && <div className="dl-empty">No picks yet.</div>}
         {sorted.map((entry, i) => {
           const teamIdx = league?.memberIds.indexOf(entry.userId) ?? -1;
           const teamName =
@@ -450,7 +448,11 @@ function LeftPanel({
             </tbody>
           </table>
 
-          <DraftLog rosterEntries={rosterEntries} league={league} onRemovePick={onRemovePick} />
+          <DraftLog
+            rosterEntries={rosterEntries}
+            league={league}
+            onRemovePick={onRemovePick}
+          />
         </div>
       )}
 
@@ -494,7 +496,11 @@ function LeftPanel({
               )}
             </tbody>
           </table>
-          <DraftLog rosterEntries={rosterEntries} league={league} onRemovePick={onRemovePick} />
+          <DraftLog
+            rosterEntries={rosterEntries}
+            league={league}
+            onRemovePick={onRemovePick}
+          />
         </div>
       )}
     </div>

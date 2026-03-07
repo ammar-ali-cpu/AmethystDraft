@@ -15,7 +15,9 @@ const SelectedPlayerContext = createContext<SelectedPlayerContextType>({
 export function SelectedPlayerProvider({ children }: { children: ReactNode }) {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   return (
-    <SelectedPlayerContext.Provider value={{ selectedPlayer, setSelectedPlayer }}>
+    <SelectedPlayerContext.Provider
+      value={{ selectedPlayer, setSelectedPlayer }}
+    >
       {children}
     </SelectedPlayerContext.Provider>
   );
