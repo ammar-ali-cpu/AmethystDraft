@@ -169,6 +169,8 @@ import type { Player } from "../types/player";
 import { useWatchlist } from "../contexts/WatchlistContext";
 import "./PlayerTable.css";
 
+type StatBasis = "projections" | "last-year" | "3-year-avg";
+
 interface PlayerTableProps {
   players: Player[];
   searchQuery: string;
@@ -177,9 +179,25 @@ interface PlayerTableProps {
   onPositionChange: (position: string) => void;
   sortBy: string;
   onSortChange: (sort: string) => void;
-  statBasis?: "projections" | "last-year" | "3-year-avg";
-  onStatBasisChange?: (basis: "projections" | "last-year" | "3-year-avg") => void;
+  statBasis?: StatBasis;
+  onStatBasisChange?: (basis: StatBasis) => void;
 }
+
+type DisplayBatting = {
+  avg: string;
+  hr: number;
+  rbi: number;
+  runs: number;
+  sb: number;
+};
+
+type DisplayPitching = {
+  era: string;
+  whip: string;
+  wins: number;
+  saves: number;
+  strikeouts: number;
+};
 
 const POSITIONS = ["all", "OF", "SS", "1B", "2B", "3B", "C", "DH", "SP", "RP"];
 
@@ -217,12 +235,111 @@ function PlayerHeadshot({ src, name }: { src: string; name: string }) {
     />
   );
 }
+// NOTE: Dummy transformations below to simulate stat basis changes, replace with real data from backend when available.
+function clampNonNegative(value: number): number {
+  return Math.max(0, Math.round(value));
+}
 
-function getCategoryTags(player: Player, statBasis: string): string[] {
+function formatRate(value: number): string {
+  return value.toFixed(3);
+}
+
+function toDisplayBatting(
+  batting?: Player["projection"]["batting"] | Player["stats"]["batting"],
+): DisplayBatting | undefined {
+  if (!batting) return undefined;
+  return {
+    avg: String(batting.avg ?? "0.000"),
+    hr: Number(batting.hr ?? 0),
+    rbi: Number(batting.rbi ?? 0),
+    runs: Number(batting.runs ?? 0),
+    sb: Number(batting.sb ?? 0),
+  };
+}
+
+function toDisplayPitching(
+  pitching?: Player["projection"]["pitching"] | Player["stats"]["pitching"],
+): DisplayPitching | undefined {
+  if (!pitching) return undefined;
+  return {
+    era: String(pitching.era ?? "0.000"),
+    whip: String(pitching.whip ?? "0.000"),
+    wins: Number(pitching.wins ?? 0),
+    saves: Number(pitching.saves ?? 0),
+    strikeouts: Number(pitching.strikeouts ?? 0),
+  };
+}
+
+function applyDummyAdjustments(
+  bat: DisplayBatting | undefined,
+  pit: DisplayPitching | undefined,
+  statBasis: StatBasis,
+): { bat?: DisplayBatting; pit?: DisplayPitching } {
+  if (statBasis === "projections") {
+    return { bat, pit };
+  }
+
+  // TODO(data): Replace this dummy basis transformation with real 2024 and 3-year datasets from backend.
+  if (statBasis === "last-year") {
+    return {
+      bat: bat
+        ? {
+            avg: formatRate(parseFloat(bat.avg) * 0.985),
+            hr: clampNonNegative(bat.hr * 1.08),
+            rbi: clampNonNegative(bat.rbi * 1.04),
+            runs: clampNonNegative(bat.runs * 0.97),
+            sb: clampNonNegative(bat.sb * 0.94),
+          }
+        : undefined,
+      pit: pit
+        ? {
+            era: formatRate(parseFloat(pit.era) * 1.06),
+            whip: formatRate(parseFloat(pit.whip) * 1.04),
+            wins: clampNonNegative(pit.wins * 0.96),
+            saves: clampNonNegative(pit.saves * 1.03),
+            strikeouts: clampNonNegative(pit.strikeouts * 1.02),
+          }
+        : undefined,
+    };
+  }
+
+  return {
+    bat: bat
+      ? {
+          avg: formatRate(parseFloat(bat.avg) * 0.995),
+          hr: clampNonNegative(bat.hr * 0.95),
+          rbi: clampNonNegative(bat.rbi * 0.96),
+          runs: clampNonNegative(bat.runs * 0.96),
+          sb: clampNonNegative(bat.sb * 0.92),
+        }
+      : undefined,
+    pit: pit
+      ? {
+          era: formatRate(parseFloat(pit.era) * 1.02),
+          whip: formatRate(parseFloat(pit.whip) * 1.01),
+          wins: clampNonNegative(pit.wins * 0.94),
+          saves: clampNonNegative(pit.saves * 0.95),
+          strikeouts: clampNonNegative(pit.strikeouts * 0.95),
+        }
+      : undefined,
+  };
+}
+
+function resolveDisplayStats(player: Player, statBasis: StatBasis): { bat?: DisplayBatting; pit?: DisplayPitching } {
+  const preferredBat = statBasis === "projections" ? player.projection?.batting : player.stats?.batting;
+  const fallbackBat = statBasis === "projections" ? player.stats?.batting : player.projection?.batting;
+  const preferredPit = statBasis === "projections" ? player.projection?.pitching : player.stats?.pitching;
+  const fallbackPit = statBasis === "projections" ? player.stats?.pitching : player.projection?.pitching;
+
+  const bat = toDisplayBatting(preferredBat ?? fallbackBat);
+  const pit = toDisplayPitching(preferredPit ?? fallbackPit);
+
+  return applyDummyAdjustments(bat, pit, statBasis);
+}
+
+function getCategoryTags(player: Player, statBasis: StatBasis): string[] {
   const tags: string[] = [];
-  const useProjections = statBasis === "projections" || statBasis === "3-year-avg";
-  const bat = useProjections ? player.projection?.batting : player.stats?.batting;
-  const pit = useProjections ? player.projection?.pitching : player.stats?.pitching;
+  const { bat, pit } = resolveDisplayStats(player, statBasis);
 
   if (bat) {
     if (bat.hr >= 30) tags.push("HR+");
@@ -365,10 +482,8 @@ export default function PlayerTable({
               const tags = getCategoryTags(player, statBasis);
               const valDiff = getValDiff(player);
               const isStarred = isInWatchlist(player.id);
-              const isBatter = !!player.stats?.batting || !!player.projection?.batting;
-              const useProjections = statBasis === "projections" || statBasis === "3-year-avg";
-              const bat = useProjections ? player.projection?.batting : player.stats?.batting;
-              const pit = useProjections ? player.projection?.pitching : player.stats?.pitching;
+              const { bat, pit } = resolveDisplayStats(player, statBasis);
+              const isBatter = !!bat || !pit;
 
               return (
                 <tr key={player.id} className={"pt-row" + (isStarred ? " pt-row--starred" : "")}>
