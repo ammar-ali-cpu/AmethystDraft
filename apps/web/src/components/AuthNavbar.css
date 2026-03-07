@@ -198,6 +198,62 @@
   font-weight: 600;
 }
 
+.league-selector-row {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: background 0.15s;
+  padding-right: 4px;
+}
+
+.league-selector-row:hover {
+  background: rgba(139, 60, 247, 0.18);
+}
+
+.league-selector-row:hover .league-selector-item {
+  color: #fff;
+}
+
+.league-selector-row .league-selector-item {
+  flex: 1;
+  padding-right: 0.25rem;
+}
+
+.league-selector-row .league-selector-item:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.league-selector-row-current .league-selector-item {
+  color: #c4b5fd;
+  font-weight: 600;
+}
+
+.league-selector-settings {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 0.4rem 0.5rem;
+  margin-left: 2px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  opacity: 0;
+}
+
+.league-selector-row:hover .league-selector-settings {
+  opacity: 1;
+}
+
+.league-selector-settings:hover {
+  color: #a78bfa;
+  background: rgba(139, 60, 247, 0.25) !important;
+}
+
 .league-selector-divider {
   height: 1px;
   background: rgba(138, 43, 226, 0.2);

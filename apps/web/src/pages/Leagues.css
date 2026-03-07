@@ -105,6 +105,33 @@
   margin-bottom: 1rem;
 }
 
+.league-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.league-card-settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(138, 43, 226, 0.25);
+  color: #7a6a90;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.league-card-settings-btn:hover {
+  color: #a78bfa;
+  background: rgba(139, 60, 247, 0.15);
+  border-color: rgba(138, 43, 226, 0.5);
+}
+
 .league-card-info {
   flex: 1;
 }

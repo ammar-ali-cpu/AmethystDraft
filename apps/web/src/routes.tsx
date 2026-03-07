@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import HomePage from './pages/HomePage';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
@@ -7,7 +7,7 @@ import Leagues from './pages/Leagues';
 import LeagueCreate from './pages/LeaguesCreate';
 import JoinLeague from "./pages/JoinLeague";
 import LeagueLayout from './components/LeagueLayout';
-import LeagueDetail from "./pages/LeagueDetail";
+import LeagueSettings from './pages/LeagueSettings';
 import MyDraft from './pages/MyDraft';
 import CommandCenter from './pages/CommandCenter';
 import Research from './pages/Research';
@@ -24,10 +24,11 @@ export const router = createBrowserRouter([
     path: "/leagues/:id",
     Component: LeagueLayout,
     children: [
-      { index: true, Component: LeagueDetail },
+      { index: true, element: <Navigate to="research" replace /> },
       { path: "research", Component: Research },
       { path: "my-draft", Component: MyDraft },
       { path: "command-center", Component: CommandCenter },
+      { path: "settings", Component: LeagueSettings },
     ],
   },
 ]);

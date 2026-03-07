@@ -46,9 +46,9 @@
 // }
 
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Zap, User, LogOut, ChevronDown } from "lucide-react";
+import { Zap, User, LogOut, ChevronDown, Settings } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useLeague } from "../contexts/LeagueContext";
 import "./AuthNavbar.css";
@@ -57,8 +57,21 @@ export default function AuthNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { league } = useLeague();
+  const { league, allLeagues } = useLeague();
   const [leagueDropdownOpen, setLeagueDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setLeagueDropdownOpen(false);
+      }
+    };
+    if (leagueDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [leagueDropdownOpen]);
 
   const handleLogout = () => {
     logout();
@@ -100,7 +113,7 @@ export default function AuthNavbar() {
 
       <div className="auth-navbar-actions">
         {league && (
-          <div className="league-selector">
+          <div className="league-selector" ref={dropdownRef}>
             <button
               className="league-selector-btn"
               onClick={() => setLeagueDropdownOpen((o) => !o)}
@@ -110,18 +123,29 @@ export default function AuthNavbar() {
             </button>
             {leagueDropdownOpen && (
               <div className="league-selector-dropdown">
-                <button
-                  className="league-selector-item league-selector-current"
-                  onClick={() => { navigate(leagueBase); setLeagueDropdownOpen(false); }}
-                >
-                  {league.name}
-                </button>
+                {allLeagues.map((l) => (
+                  <div key={l.id} className={"league-selector-row" + (l.id === league.id ? " league-selector-row-current" : "")}>
+                    <button
+                      className="league-selector-item"
+                      onClick={() => { navigate(`/leagues/${l.id}/research`); setLeagueDropdownOpen(false); }}
+                    >
+                      {l.name}
+                    </button>
+                    <button
+                      className="league-selector-settings"
+                      title="League settings"
+                      onClick={() => { navigate(`/leagues/${l.id}/settings`); setLeagueDropdownOpen(false); }}
+                    >
+                      <Settings size={13} />
+                    </button>
+                  </div>
+                ))}
                 <div className="league-selector-divider" />
                 <button
                   className="league-selector-item"
                   onClick={() => { navigate('/leagues'); setLeagueDropdownOpen(false); }}
                 >
-                  Switch League
+                  All Leagues
                 </button>
               </div>
             )}

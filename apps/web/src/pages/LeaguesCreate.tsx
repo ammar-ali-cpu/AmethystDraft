@@ -1,86 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, ChevronRight, Search } from "lucide-react";
 import { useNavigate } from "react-router";
+import { useLeagueForm } from "../hooks/useLeagueForm";
+import { hittingStats, pitchingStats, keeperSlots } from "../types/league";
 import "./LeaguesCreate.css";
 
 type Step = 1 | 2 | 3 | 4;
-
-type RosterSlot = {
-  position: string;
-  count: number;
-};
-
-type Player = {
-  id: number;
-  name: string;
-  team: string;
-  pos: string;
-  adp: number;
-};
-
-type TeamKeeper = {
-  slot: string;
-  playerName: string;
-  team: string;
-  cost: number;
-};
-
-type TeamKeepersMap = Record<string, TeamKeeper[]>;
-
-const rosterDefaults: RosterSlot[] = [
-  { position: "C", count: 1 },
-  { position: "1B", count: 1 },
-  { position: "2B", count: 1 },
-  { position: "SS", count: 1 },
-  { position: "3B", count: 1 },
-  { position: "MI", count: 1 },
-  { position: "CI", count: 1 },
-  { position: "OF", count: 3 },
-  { position: "UTIL", count: 1 },
-  { position: "SP", count: 5 },
-  { position: "RP", count: 2 },
-  { position: "BN", count: 3 },
-];
-
-const availablePlayers: Player[] = [
-  { id: 1, name: "Ronald Acuña Jr.", team: "ATL", pos: "OF", adp: 1.2 },
-  { id: 2, name: "Shohei Ohtani", team: "LAD", pos: "TWP", adp: 2.5 },
-  { id: 3, name: "Julio Rodríguez", team: "SEA", pos: "OF", adp: 3.8 },
-  { id: 4, name: "Bobby Witt Jr.", team: "KC", pos: "SS", adp: 4.1 },
-  { id: 5, name: "Corbin Carroll", team: "ARI", pos: "OF", adp: 5.4 },
-  { id: 6, name: "Mookie Betts", team: "LAD", pos: "2B/OF", adp: 6.2 },
-  { id: 7, name: "Freddie Freeman", team: "LAD", pos: "1B", adp: 7.0 },
-  { id: 8, name: "Kyle Tucker", team: "HOU", pos: "OF", adp: 8.5 },
-];
-
-const hittingStats = [
-  "Runs (R)",
-  "Home Runs (HR)",
-  "Runs Batted In (RBI)",
-  "Stolen Bases (SB)",
-  "Batting Average (AVG)",
-  "On-Base Percentage (OBP)",
-  "Slugging Percentage (SLG)",
-  "Total Bases (TB)",
-  "Hits (H)",
-  "Walks (BB)",
-  "Strikeouts (K)",
-];
-
-const pitchingStats = [
-  "Wins (W)",
-  "Strikeouts (K)",
-  "Earned Run Average (ERA)",
-  "WHIP (Walks + Hits per IP)",
-  "Saves (SV)",
-  "Holds (HLD)",
-  "Quality Starts (QS)",
-  "Innings Pitched (IP)",
-  "Complete Games (CG)",
-  "Wins + Quality Starts (W+QS)",
-];
-
-const keeperSlots = ["C", "1B", "2B", "3B", "SS", "OF", "OF", "OF", "IF", "P"];
 
 const stepLabels: Record<Step, string> = {
   1: "League Setup",
@@ -94,57 +19,22 @@ export default function LeagueCreate() {
 
   const [step, setStep] = useState<Step>(1);
 
-  const [leagueName, setLeagueName] = useState("Friendly League");
-  const [teams, setTeams] = useState(12);
-  const [budget, setBudget] = useState(260);
-  const [rosterSlots, setRosterSlots] = useState<RosterSlot[]>(rosterDefaults);
-
-  const [playerPool, setPlayerPool] = useState<"Mixed MLB" | "AL-Only" | "NL-Only">("Mixed MLB");
-  const [selectedHitting, setSelectedHitting] = useState<string[]>([
-    "Runs (R)",
-    "Home Runs (HR)",
-    "Runs Batted In (RBI)",
-    "Stolen Bases (SB)",
-    "Batting Average (AVG)",
-  ]);
-  const [selectedPitching, setSelectedPitching] = useState<string[]>([
-    "Wins (W)",
-    "Strikeouts (K)",
-    "Earned Run Average (ERA)",
-    "WHIP (Walks + Hits per IP)",
-    "Saves (SV)",
-  ]);
-
-  const [teamNames, setTeamNames] = useState<string[]>(
-    Array.from({ length: 12 }, (_, i) => `Team ${i + 1}`)
-  );
-
-  const [activeKeeperTeam, setActiveKeeperTeam] = useState("Team 1");
-  const [playerSearch, setPlayerSearch] = useState("");
-
-  const [teamKeepers, setTeamKeepers] = useState<TeamKeepersMap>({
-    "Team 1": [
-      { slot: "C", playerName: "J.T. Realmuto", team: "PHI", cost: 29 },
-      { slot: "SS", playerName: "Bobby Witt Jr.", team: "KC", cost: 19 },
-      { slot: "OF", playerName: "Ronald Acuña Jr.", team: "ATL", cost: 17 },
-    ],
-  });
-
-  const totalRosterSpots = useMemo(
-    () => rosterSlots.reduce((sum, slot) => sum + slot.count, 0),
-    [rosterSlots]
-  );
-
-  const filteredPlayers = useMemo(() => {
-    return availablePlayers.filter((player) =>
-      player.name.toLowerCase().includes(playerSearch.toLowerCase())
-    );
-  }, [playerSearch]);
-
-  const currentKeepers = teamKeepers[activeKeeperTeam] ?? [];
-  const keeperBudgetUsed = currentKeepers.reduce((sum, keeper) => sum + keeper.cost, 0);
-  const remainingBudget = budget - keeperBudgetUsed;
-  const completionPercent = Math.round((currentKeepers.length / keeperSlots.length) * 100);
+  const {
+    leagueName, setLeagueName,
+    teams, setTeams,
+    budget, setBudget,
+    rosterSlots, totalRosterSpots,
+    playerPool, setPlayerPool,
+    selectedHitting, setSelectedHitting,
+    selectedPitching, setSelectedPitching,
+    teamNames,
+    activeKeeperTeam, setActiveKeeperTeam,
+    playerSearch, setPlayerSearch,
+    teamKeepers,
+    currentKeepers, remainingBudget, completionPercent,
+    filteredPlayers,
+    toggleStat, updateRosterCount, updateTeamName, addKeeper, removeKeeper,
+  } = useLeagueForm({ initialName: "Friendly League" });
 
   const goBack = () => {
     if (step === 1) {
@@ -170,70 +60,6 @@ export default function LeagueCreate() {
       selectedPitching,
       teamNames,
       teamKeepers,
-    });
-  };
-
-  const toggleStat = (
-    stat: string,
-    selected: string[],
-    setter: React.Dispatch<React.SetStateAction<string[]>>
-  ) => {
-    if (selected.includes(stat)) {
-      setter(selected.filter((s) => s !== stat));
-    } else {
-      setter([...selected, stat]);
-    }
-  };
-
-  const updateRosterCount = (position: string, delta: number) => {
-    setRosterSlots((prev) =>
-      prev.map((slot) =>
-        slot.position === position
-          ? { ...slot, count: Math.max(0, slot.count + delta) }
-          : slot
-      )
-    );
-  };
-
-  const updateTeamName = (index: number, value: string) => {
-    const next = [...teamNames];
-    const previousName = next[index];
-    next[index] = value;
-    setTeamNames(next);
-
-    if (previousName === activeKeeperTeam) {
-      setActiveKeeperTeam(value || `Team ${index + 1}`);
-    }
-  };
-
-  const addKeeper = (player: Player) => {
-    const current = teamKeepers[activeKeeperTeam] ?? [];
-    if (current.length >= keeperSlots.length) return;
-
-    const nextSlot = keeperSlots[current.length];
-    const cost = Math.floor(player.adp * 2 + 10);
-
-    setTeamKeepers({
-      ...teamKeepers,
-      [activeKeeperTeam]: [
-        ...current,
-        {
-          slot: nextSlot,
-          playerName: player.name,
-          team: player.team,
-          cost,
-        },
-      ],
-    });
-  };
-
-  const removeKeeper = (index: number) => {
-    const current = teamKeepers[activeKeeperTeam] ?? [];
-    const updated = current.filter((_, i) => i !== index);
-
-    setTeamKeepers({
-      ...teamKeepers,
-      [activeKeeperTeam]: updated,
     });
   };
 

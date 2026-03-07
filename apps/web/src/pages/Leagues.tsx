@@ -1,4 +1,4 @@
-import { Plus, Users, Calendar, DollarSign, Trophy } from "lucide-react";
+import { Plus, Users, Calendar, DollarSign, Trophy, Settings } from "lucide-react";
 import AuthNavbar from "../components/AuthNavbar";
 import "./Leagues.css";
 import { useNavigate } from "react-router";
@@ -37,8 +37,12 @@ export default function Leagues() {
   };
 
   const handleLeagueClick = (leagueId: string) => {
-    navigate(`/leagues/${leagueId}`);
-    console.log("League clicked:", leagueId);
+    navigate(`/leagues/${leagueId}/research`);
+  };
+
+  const handleSettingsClick = (e: React.MouseEvent, leagueId: string) => {
+    e.stopPropagation();
+    navigate(`/leagues/${leagueId}/settings`);
   };
 
   const getStatusLabel = (status: string) => {
@@ -88,9 +92,18 @@ export default function Leagues() {
                   <div className="league-card-info">
                     <h3 className="league-card-title">{league.name}</h3>
                   </div>
-                  <span className={`league-card-status status-${league.status}`}>
-                    {getStatusLabel(league.status)}
-                  </span>
+                  <div className="league-card-header-right">
+                    <span className={`league-card-status status-${league.status}`}>
+                      {getStatusLabel(league.status)}
+                    </span>
+                    <button
+                      className="league-card-settings-btn"
+                      title="League settings"
+                      onClick={(e) => handleSettingsClick(e, league.id)}
+                    >
+                      <Settings size={15} />
+                    </button>
+                  </div>
                 </div>
                 <div className="league-card-meta">
                   <div className="league-meta-item">

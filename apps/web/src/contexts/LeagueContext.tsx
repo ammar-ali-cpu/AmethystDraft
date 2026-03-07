@@ -12,9 +12,10 @@ export interface League {
 
 interface LeagueContextType {
   league: League | null;
+  allLeagues: League[];
 }
 
-export const LeagueContext = createContext<LeagueContextType>({ league: null });
+export const LeagueContext = createContext<LeagueContextType>({ league: null, allLeagues: [] });
 
 export function useLeague() {
   return useContext(LeagueContext);
