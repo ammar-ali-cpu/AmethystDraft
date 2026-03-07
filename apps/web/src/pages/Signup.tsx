@@ -3,9 +3,11 @@ import { Link, useNavigate } from "react-router";
 import { Zap, ArrowLeft } from "lucide-react";
 import { registerUser } from "../api/auth";
 import { useAuth } from "../contexts/AuthContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 import "./Signup.css";
 
 export default function Signup() {
+  usePageTitle("Sign Up");
   const navigate = useNavigate();
   const { login } = useAuth();
 

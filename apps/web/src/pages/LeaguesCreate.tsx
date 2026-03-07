@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, ChevronRight, Search } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useLeagueForm } from "../hooks/useLeagueForm";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { hittingStats, pitchingStats, keeperSlots } from "../types/league";
 import "./LeaguesCreate.css";
 
@@ -15,6 +16,7 @@ const stepLabels: Record<Step, string> = {
 };
 
 export default function LeagueCreate() {
+  usePageTitle("Create League");
   const navigate = useNavigate();
 
   const [step, setStep] = useState<Step>(1);

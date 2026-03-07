@@ -3,6 +3,7 @@ import { ArrowLeft, Search, Save } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useLeague } from "../contexts/LeagueContext";
 import { useLeagueForm } from "../hooks/useLeagueForm";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { hittingStats, pitchingStats, keeperSlots } from "../types/league";
 import "./LeagueSettings.css";
 
@@ -21,6 +22,7 @@ export default function LeagueSettings() {
   const navigate = useNavigate();
   const { league } = useLeague();
 
+  usePageTitle(league ? `${league.name} Settings` : "League Settings");
   const [activeSection, setActiveSection] = useState<Section>("setup");
 
   const {

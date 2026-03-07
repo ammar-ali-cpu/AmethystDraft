@@ -3,9 +3,11 @@ import { Link, useNavigate } from "react-router";
 import { Zap, ArrowLeft } from "lucide-react";
 import { loginUser } from "../api/auth";
 import { useAuth } from "../contexts/AuthContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 import "./Login.css";
 
 export default function Login() {
+  usePageTitle("Log In");
   const navigate = useNavigate();
   const { login } = useAuth();
 

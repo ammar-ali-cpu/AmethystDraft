@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { Star } from "lucide-react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { useWatchlist } from "../contexts/WatchlistContext";
 import type { Player } from "../types/player";
 import "./MyDraft.css";
@@ -43,6 +44,7 @@ function getPriority(player: Player): "High" | "Medium" | "Low" {
 }
 
 export default function MyDraft() {
+	usePageTitle("My Draft");
 	const { watchlist, removeFromWatchlist } = useWatchlist();
 	const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
 	// TODO(storage): Persist notes per league/user in backend; this is local-only state.

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import ResearchSidebar from "../components/ResearchSidebar";
 import PlayerTable from "../components/PlayerTable";
 import type { Player } from "../types/player";
@@ -6,6 +7,7 @@ import { getPlayers } from "../api/players";
 import "./Research.css";
 
 export default function Research() {
+  usePageTitle("Research");
   const [selectedView, setSelectedView] = useState("player-database");
   const [searchQuery, setSearchQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("all");

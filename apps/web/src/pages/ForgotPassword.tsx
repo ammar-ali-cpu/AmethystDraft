@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { forgotPassword } from "../api/auth";
+import { usePageTitle } from "../hooks/usePageTitle";
 import "./ForgotPassword.css";
 
 export default function ForgotPassword() {
+  usePageTitle("Forgot Password");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

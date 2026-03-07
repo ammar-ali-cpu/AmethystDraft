@@ -1,5 +1,6 @@
 import { ArrowLeft, Search, Users, Trophy } from "lucide-react";
 import { useNavigate } from "react-router";
+import { usePageTitle } from "../hooks/usePageTitle";
 import "./JoinLeague.css";
 
 const publicLeagues = [
@@ -33,6 +34,7 @@ const publicLeagues = [
 ];
 
 export default function JoinLeague() {
+  usePageTitle("Join League");
   const navigate = useNavigate();
 
   const handleBack = () => {

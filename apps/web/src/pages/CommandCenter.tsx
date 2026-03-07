@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageTitle } from "../hooks/usePageTitle";
 import "./CommandCenter.css";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -558,6 +559,7 @@ function RightPanel() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CommandCenter() {
+  usePageTitle("Command Center");
   const [activeTab, setActiveTab] = useState("Market");
 
   return (

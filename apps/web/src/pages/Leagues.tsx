@@ -2,9 +2,11 @@ import { Plus, Users, Calendar, DollarSign, Trophy, Settings } from "lucide-reac
 import AuthNavbar from "../components/AuthNavbar";
 import "./Leagues.css";
 import { useNavigate } from "react-router";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 
 export default function Leagues() {
+  usePageTitle("My Leagues");
   const navigate = useNavigate();
   // Mock data - replace with real API calls later
   const leagues = [
