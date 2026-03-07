@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePageTitle } from "../hooks/usePageTitle";
-import ResearchSidebar from "../components/ResearchSidebar";
+import { Database, BarChart3, Layers } from "lucide-react";
 import PlayerTable from "../components/PlayerTable";
 import type { Player } from "../types/player";
 import { getPlayers } from "../api/players";
@@ -46,15 +46,32 @@ export default function Research() {
     });
   }, [players, searchQuery, positionFilter]);
 
+  const navigationItems = [
+    { id: "player-database", label: "Players", icon: Database },
+    { id: "tiers", label: "Tiers", icon: BarChart3 },
+    { id: "depth-charts", label: "Depth Charts", icon: Layers },
+  ];
+
   return (
     <div className="research-page">
       <div className="research-layout">
-        <ResearchSidebar 
-          selectedView={selectedView} 
-          onSelectView={setSelectedView}
-          statBasis={statBasis}
-          onStatBasisChange={setStatBasis}
-        />
+        {/* Top Navigation Tabs */}
+        <div className="research-top-nav">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                className={`nav-tab ${selectedView === item.id ? "active" : ""}`}
+                onClick={() => setSelectedView(item.id)}
+              >
+                <Icon size={16} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="research-content">
           {selectedView === "player-database" && (
             <>
@@ -74,25 +91,20 @@ export default function Research() {
                   sortBy={sortBy}
                   onSortChange={setSortBy}
                   statBasis={statBasis}
+                  onStatBasisChange={setStatBasis}
                 />
               )}
             </>
           )}
-          {selectedView === "watchlists" && (
+          {selectedView === "tiers" && (
             <div className="coming-soon">
-              <h2>Watchlists</h2>
+              <h2>Tiers</h2>
               <p>Coming soon...</p>
             </div>
           )}
-          {selectedView === "rankings" && (
+          {selectedView === "depth-charts" && (
             <div className="coming-soon">
-              <h2>Rankings</h2>
-              <p>Coming soon...</p>
-            </div>
-          )}
-          {selectedView === "compare" && (
-            <div className="coming-soon">
-              <h2>Compare</h2>
+              <h2>Depth Charts</h2>
               <p>Coming soon...</p>
             </div>
           )}

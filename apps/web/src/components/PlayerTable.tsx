@@ -339,6 +339,7 @@ export default function PlayerTable({
           <thead>
             <tr>
               <th className="th-rank">Rank</th>
+              <th className="th-star"></th>
               <th className="th-player">Player</th>
               <th className="th-pos">Pos</th>
               <th className="th-team">Team</th>
@@ -352,7 +353,6 @@ export default function PlayerTable({
               <th className="th-stat">R/SV</th>
               <th className="th-stat">SB/WHIP</th>
               <th className="th-tags">Tags</th>
-              <th className="th-star"></th>
             </tr>
           </thead>
           <tbody>
@@ -373,6 +373,16 @@ export default function PlayerTable({
               return (
                 <tr key={player.id} className={"pt-row" + (isStarred ? " pt-row--starred" : "")}>
                   <td className="td-rank">{index + 1}</td>
+
+                  <td className="td-star">
+                    <button
+                      className={"btn-star " + (isStarred ? "starred" : "")}
+                      onClick={() => toggleWatchlist(player)}
+                      title={isStarred ? "Remove from watchlist" : "Add to watchlist"}
+                    >
+                      <Star size={15} fill={isStarred ? "#fbbf24" : "none"} />
+                    </button>
+                  </td>
 
                   <td className="td-player">
                     <div className="player-cell">
@@ -408,16 +418,6 @@ export default function PlayerTable({
                     <div className="tag-list">
                       {tags.map(t => <span key={t} className="tag">{t}</span>)}
                     </div>
-                  </td>
-
-                  <td className="td-star">
-                    <button
-                      className={"btn-star " + (isStarred ? "starred" : "")}
-                      onClick={() => toggleWatchlist(player)}
-                      title={isStarred ? "Remove from watchlist" : "Add to watchlist"}
-                    >
-                      <Star size={15} fill={isStarred ? "#fbbf24" : "none"} />
-                    </button>
                   </td>
                 </tr>
               );

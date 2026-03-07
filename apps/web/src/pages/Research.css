@@ -7,13 +7,58 @@
 
 .research-layout {
   display: flex;
+  flex-direction: column;
   height: calc(100vh - 56px);
+}
+
+/* Top Navigation Tabs */
+.research-top-nav {
+  display: flex;
+  gap: 0;
+  background: rgba(14, 8, 24, 0.9);
+  border-bottom: 2px solid rgba(168, 85, 247, 0.25);
+  padding: 0 1.5rem;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  color: #b8a3d8;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.nav-tab:hover {
+  color: #e2d9f3;
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.nav-tab.active {
+  color: #f0e6ff;
+  border-bottom-color: #a855f7;
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.nav-tab svg {
+  opacity: 0.8;
+}
+
+.nav-tab.active svg {
+  opacity: 1;
 }
 
 .research-content {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem;
+  padding: 1.5rem;
 }
 
 /* Custom scrollbar styling */
