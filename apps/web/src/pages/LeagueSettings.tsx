@@ -79,7 +79,6 @@ function LeagueSettingsForm({ league }: { league: League }) {
     setActiveKeeperTeam,
     playerSearch,
     setPlayerSearch,
-    teamKeepers,
     currentKeepers,
     remainingBudget,
     completionPercent,
