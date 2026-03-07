@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { Search, Star, RotateCcw } from "lucide-react";
 import type { Player } from "../types/player";
 import { useWatchlist } from "../contexts/WatchlistContext";
@@ -16,6 +16,7 @@ interface PlayerTableProps {
   onSortChange: (sort: string) => void;
   statBasis?: StatBasis;
   onStatBasisChange?: (basis: StatBasis) => void;
+  onPlayerClick?: (player: Player) => void;
 }
 
 type DisplayBatting = {
@@ -192,9 +193,8 @@ function resolveDisplayStats(
   return applyDummyAdjustments(bat, pit, statBasis);
 }
 
-function getCategoryTags(player: Player, statBasis: StatBasis): string[] {
+function getCategoryTags(bat: DisplayBatting | undefined, pit: DisplayPitching | undefined): string[] {
   const tags: string[] = [];
-  const { bat, pit } = resolveDisplayStats(player, statBasis);
 
   if (bat) {
     if (bat.hr >= 30) tags.push("HR+");
@@ -227,9 +227,18 @@ export default function PlayerTable({
   onSortChange,
   statBasis = "projections",
   onStatBasisChange,
+  onPlayerClick,
 }: PlayerTableProps) {
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const [starredOnly, setStarredOnly] = useState(false);
+
+  // Two-phase render: paint the first INITIAL_ROWS synchronously so the page
+  // appears instantly, then expand to the full list as a low-priority transition.
+  const INITIAL_ROWS = 60;
+  const [fullyRendered, setFullyRendered] = useState(false);
+  useEffect(() => {
+    startTransition(() => setFullyRendered(true));
+  }, []);
 
   const toggleWatchlist = (player: Player) => {
     if (isInWatchlist(player.id)) removeFromWatchlist(player.id);
@@ -246,6 +255,22 @@ export default function PlayerTable({
   const displayed = starredOnly
     ? players.filter((p) => isInWatchlist(p.id))
     : players;
+
+  const rowData = useMemo(
+    () =>
+      (fullyRendered ? displayed : displayed.slice(0, INITIAL_ROWS)).map((player) => {
+        const { bat, pit } = resolveDisplayStats(player, statBasis);
+        return {
+          player,
+          bat,
+          pit,
+          isBatter: !!bat || !pit,
+          tags: getCategoryTags(bat, pit),
+          valDiff: getValDiff(player),
+        };
+      }),
+    [displayed, statBasis, fullyRendered],
+  );
 
   return (
     <div className="pt-container">
@@ -357,17 +382,14 @@ export default function PlayerTable({
                 </td>
               </tr>
             )}
-            {displayed.map((player, index) => {
-              const tags = getCategoryTags(player, statBasis);
-              const valDiff = getValDiff(player);
+            {rowData.map(({ player, bat, pit, isBatter, tags, valDiff }, index) => {
               const isStarred = isInWatchlist(player.id);
-              const { bat, pit } = resolveDisplayStats(player, statBasis);
-              const isBatter = !!bat || !pit;
 
               return (
                 <tr
                   key={player.id}
-                  className={"pt-row" + (isStarred ? " pt-row--starred" : "")}
+                  className={"pt-row" + (isStarred ? " pt-row--starred" : "") + (onPlayerClick ? " pt-row--clickable" : "")}
+                  onClick={onPlayerClick ? () => onPlayerClick(player) : undefined}
                 >
                   <td className="td-rank">{index + 1}</td>
 

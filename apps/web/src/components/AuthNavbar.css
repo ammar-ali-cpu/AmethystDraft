@@ -41,6 +41,7 @@
   font-weight: 500;
   cursor: pointer;
   padding: 0 1rem;
+  padding-bottom: 4px;
   border-radius: 0;
   transition: color 0.2s, border-color 0.2s;
   font-family: inherit;
@@ -116,6 +117,20 @@
 .nav-link-active {
   color: #c4b5fd;
   border-bottom-color: #a78bfa;
+}
+
+.nav-key-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #6b4fa0;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 3px;
+  padding: 0.05rem 0.28rem;
+  margin-right: 0.35rem;
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+  font-family: 'DM Mono', monospace;
 }
 
 /* League selector dropdown */

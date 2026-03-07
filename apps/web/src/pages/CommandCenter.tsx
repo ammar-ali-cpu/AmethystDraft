@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { X } from "lucide-react";
 import { useParams } from "react-router";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useLeague } from "../contexts/LeagueContext";
 import type { League } from "../contexts/LeagueContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useWatchlist } from "../contexts/WatchlistContext";
+import { useSelectedPlayer } from "../contexts/SelectedPlayerContext";
 import type { Player } from "../types/player";
 import { getPlayers } from "../api/players";
 import { addRosterEntry, getRoster, removeRosterEntry } from "../api/roster";
@@ -156,11 +158,12 @@ function computePositionMarket(
 function DraftLog({
   rosterEntries,
   league,
+  onRemovePick,
 }: {
   rosterEntries: RosterEntry[];
   league: League | null;
+  onRemovePick?: (id: string) => void;
 }) {
-  if (rosterEntries.length === 0) return null;
   const sorted = [...rosterEntries].sort(
     (a, b) =>
       new Date(a.acquiredAt ?? a.createdAt ?? 0).getTime() -
@@ -172,6 +175,9 @@ function DraftLog({
         DRAFT LOG
       </div>
       <div className="draft-log-list">
+        {sorted.length === 0 && (
+          <div className="dl-empty">No picks yet.</div>
+        )}
         {sorted.map((entry, i) => {
           const teamIdx = league?.memberIds.indexOf(entry.userId) ?? -1;
           const teamName =
@@ -186,6 +192,15 @@ function DraftLog({
               <span className="dl-name">{entry.playerName}</span>
               <span className="dl-team">{teamName}</span>
               <span className="dl-price">${entry.price}</span>
+              {onRemovePick && (
+                <button
+                  className="dl-remove"
+                  title="Remove pick"
+                  onClick={() => onRemovePick(entry._id)}
+                >
+                  <X size={11} />
+                </button>
+              )}
             </div>
           );
         })}
@@ -204,6 +219,7 @@ function LeftPanel({
   allPlayers,
   draftedIds,
   rosterEntries,
+  onRemovePick,
 }: {
   activeTab: string;
   setActiveTab: (t: string) => void;
@@ -214,6 +230,7 @@ function LeftPanel({
   allPlayers: Player[];
   draftedIds: Set<string>;
   rosterEntries: RosterEntry[];
+  onRemovePick: (id: string) => void;
 }) {
   const posMarket = useMemo(
     () =>
@@ -433,7 +450,7 @@ function LeftPanel({
             </tbody>
           </table>
 
-          <DraftLog rosterEntries={rosterEntries} league={league} />
+          <DraftLog rosterEntries={rosterEntries} league={league} onRemovePick={onRemovePick} />
         </div>
       )}
 
@@ -477,7 +494,7 @@ function LeftPanel({
               )}
             </tbody>
           </table>
-          <DraftLog rosterEntries={rosterEntries} league={league} />
+          <DraftLog rosterEntries={rosterEntries} league={league} onRemovePick={onRemovePick} />
         </div>
       )}
     </div>
@@ -492,6 +509,7 @@ function AuctionCenter({
   setSelectedPlayer,
   draftedIds,
   myTeamEntries,
+  showToast,
 }: {
   rosterEntries: RosterEntry[];
   refreshRoster: () => void;
@@ -500,6 +518,7 @@ function AuctionCenter({
   setSelectedPlayer: (p: Player | null) => void;
   draftedIds: Set<string>;
   myTeamEntries: RosterEntry[];
+  showToast: (message: string, type?: "success" | "error" | "info") => void;
 }) {
   const { id: leagueId } = useParams<{ id: string }>();
   const { league } = useLeague();
@@ -516,22 +535,10 @@ function AuctionCenter({
   const [draftedToSlot, setDraftedToSlot] = useState("");
   const [statView, setStatView] = useState<"hitting" | "pitching">("pitching");
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error" | "info";
-  } | null>(null);
   const [playerNotes, setPlayerNotes] = useState<Map<string, string>>(
     new Map(),
   );
   const [redoStack, setRedoStack] = useState<RosterEntry[]>([]);
-
-  const showToast = (
-    message: string,
-    type: "success" | "error" | "info" = "success",
-  ) => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   // Seed "Won By" default when league loads
   useEffect(() => {
@@ -1124,10 +1131,6 @@ function AuctionCenter({
           </button>
         </div>
       )}
-
-      {toast && (
-        <div className={`cc-toast cc-toast-${toast.type}`}>{toast.message}</div>
-      )}
     </div>
   );
 }
@@ -1346,7 +1349,7 @@ export default function CommandCenter() {
   const [activeTab, setActiveTab] = useState("Market");
   const [rosterEntries, setRosterEntries] = useState<RosterEntry[]>([]);
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const { selectedPlayer, setSelectedPlayer } = useSelectedPlayer();
 
   const refreshRoster = () => {
     if (!leagueId || !token) return;
@@ -1380,6 +1383,32 @@ export default function CommandCenter() {
 
   const myTeamEntries = rosterEntries.filter((e) => e.userId === user?.id);
 
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+
+  const showToast = (
+    message: string,
+    type: "success" | "error" | "info" = "success",
+  ) => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleRemovePick = async (entryId: string) => {
+    if (!leagueId || !token) return;
+    const entry = rosterEntries.find((e) => e._id === entryId);
+    setRosterEntries((prev) => prev.filter((e) => e._id !== entryId));
+    try {
+      await removeRosterEntry(leagueId, entryId, token);
+      showToast(`✕ Removed ${entry?.playerName ?? "pick"}`, "info");
+    } catch (err) {
+      refreshRoster();
+      showToast(err instanceof Error ? err.message : "Remove failed", "error");
+    }
+  };
+
   return (
     <div className="cc-page">
       <div className="cc-layout">
@@ -1393,6 +1422,7 @@ export default function CommandCenter() {
           allPlayers={allPlayers}
           draftedIds={draftedIds}
           rosterEntries={rosterEntries}
+          onRemovePick={handleRemovePick}
         />
         <AuctionCenter
           rosterEntries={rosterEntries}
@@ -1402,6 +1432,7 @@ export default function CommandCenter() {
           setSelectedPlayer={setSelectedPlayer}
           draftedIds={draftedIds}
           myTeamEntries={myTeamEntries}
+          showToast={showToast}
         />
         <RightPanel
           league={league}
@@ -1412,6 +1443,9 @@ export default function CommandCenter() {
           rosterEntries={rosterEntries}
         />
       </div>
+      {toast && (
+        <div className={`cc-toast cc-toast-${toast.type}`}>{toast.message}</div>
+      )}
     </div>
   );
 }

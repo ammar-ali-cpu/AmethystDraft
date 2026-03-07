@@ -1,5 +1,6 @@
 import { Outlet, useParams } from "react-router";
 import { useLeague, LeagueContext } from "../contexts/LeagueContext";
+import { SelectedPlayerProvider } from "../contexts/SelectedPlayerContext";
 import AuthNavbar from "./AuthNavbar";
 
 export default function LeagueLayout() {
@@ -11,8 +12,10 @@ export default function LeagueLayout() {
     <LeagueContext.Provider
       value={{ league, allLeagues, loading, refreshLeagues }}
     >
-      <AuthNavbar />
-      <Outlet />
+      <SelectedPlayerProvider>
+        <AuthNavbar />
+        <Outlet />
+      </SelectedPlayerProvider>
     </LeagueContext.Provider>
   );
 }

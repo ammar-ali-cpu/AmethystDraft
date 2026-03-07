@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { Database, BarChart3, Layers } from "lucide-react";
 import PlayerTable from "../components/PlayerTable";
 import type { Player } from "../types/player";
 import { getPlayers, getPlayersCached } from "../api/players";
+import { useSelectedPlayer } from "../contexts/SelectedPlayerContext";
 import "./Research.css";
 
 export default function Research() {
   usePageTitle("Research");
+  const { id: leagueId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { setSelectedPlayer } = useSelectedPlayer();
   const [selectedView, setSelectedView] = useState("player-database");
   const [searchQuery, setSearchQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("all");
@@ -58,6 +63,11 @@ export default function Research() {
     });
   }, [players, searchQuery, positionFilter]);
 
+  const handlePlayerClick = (player: Player) => {
+    setSelectedPlayer(player);
+    void navigate(`/leagues/${leagueId ?? ""}/command-center`);
+  };
+
   const navigationItems = [
     { id: "player-database", label: "Players", icon: Database },
     { id: "tiers", label: "Tiers", icon: BarChart3 },
@@ -104,6 +114,7 @@ export default function Research() {
                   onSortChange={setSortBy}
                   statBasis={statBasis}
                   onStatBasisChange={setStatBasis}
+                  onPlayerClick={handlePlayerClick}
                 />
               )}
             </>

@@ -67,13 +67,30 @@ export default function AuthNavbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [alertsOpen]);
 
+  const leagueBase = league ? `/leagues/${league.id}` : "";
+  const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    if (!league) return;
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const routes: Record<string, string> = {
+        "1": `${leagueBase}/research`,
+        "2": `${leagueBase}/my-draft`,
+        "3": `${leagueBase}/command-center`,
+        "4": `${leagueBase}/overview`,
+      };
+      if (routes[e.key]) navigate(routes[e.key]);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [league, leagueBase, navigate]);
+
   const handleLogout = () => {
     logout();
     navigate("/");
   };
-
-  const leagueBase = league ? `/leagues/${league.id}` : "";
-  const isActive = (path: string) => location.pathname === path;
 
   return (
     <nav className="auth-navbar">
@@ -91,7 +108,7 @@ export default function AuthNavbar() {
             }
             onClick={() => navigate(`${leagueBase}/research`)}
           >
-            Research
+            <span className="nav-key-badge">1</span>Research
           </button>
           <button
             className={
@@ -100,7 +117,7 @@ export default function AuthNavbar() {
             }
             onClick={() => navigate(`${leagueBase}/my-draft`)}
           >
-            My Draft
+            <span className="nav-key-badge">2</span>My Draft
           </button>
           <button
             className={
@@ -111,7 +128,7 @@ export default function AuthNavbar() {
             }
             onClick={() => navigate(`${leagueBase}/command-center`)}
           >
-            Command Center
+            <span className="nav-key-badge">3</span>Command Center
           </button>
           <button
             className={
@@ -120,7 +137,7 @@ export default function AuthNavbar() {
             }
             onClick={() => navigate(`${leagueBase}/overview`)}
           >
-            Overview
+            <span className="nav-key-badge">4</span>Overview
           </button>
         </div>
       )}

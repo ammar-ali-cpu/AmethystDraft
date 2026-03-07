@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown, X } from "lucide-react";
 import { useLeague } from "../contexts/LeagueContext";
 import { useAuth } from "../contexts/AuthContext";
-import { getRoster } from "../api/roster";
+import { getRoster, removeRosterEntry } from "../api/roster";
 import type { RosterEntry } from "../api/roster";
 import { usePageTitle } from "../hooks/usePageTitle";
 import "./LeagueOverview.css";
@@ -214,6 +214,12 @@ export default function LeagueOverview() {
   const [loadingRoster, setLoadingRoster] = useState(true);
   const [sortCat, setSortCat] = useState<string>("HR");
   const [sortAsc, setSortAsc] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     if (!league || !token) return;
@@ -276,6 +282,19 @@ export default function LeagueOverview() {
     else {
       setSortCat(cat);
       setSortAsc(false);
+    }
+  };
+
+  const handleRemoveEntry = async (entryId: string) => {
+    if (!league || !token) return;
+    const entry = entries.find((e) => e._id === entryId);
+    setEntries((prev) => prev.filter((e) => e._id !== entryId));
+    try {
+      await removeRosterEntry(league.id, entryId, token);
+      showToast(`✕ Removed ${entry?.playerName ?? "pick"}`, "info");
+    } catch {
+      getRoster(league.id, token).then(setEntries).catch(() => {});
+      showToast("Failed to remove pick", "error");
     }
   };
 
@@ -366,13 +385,9 @@ export default function LeagueOverview() {
             </table>
           </div>
 
-          {/* ── Draft Log ──────────────────────────────────────────────────── */}
-          {entries.length > 0 && (
-            <div className="lo-draft-log">
-              <div
-                className="lo-section-header"
-                style={{ marginTop: "1.5rem" }}
-              >
+          {entries.length > 0 ? (
+            <>
+              <div className="lo-section-header">
                 <span className="lo-section-title">DRAFT LOG</span>
                 <span className="lo-section-meta">{entries.length} picks</span>
               </div>
@@ -397,14 +412,32 @@ export default function LeagueOverview() {
                         <span className="lo-dl-name">{entry.playerName}</span>
                         <span className="lo-dl-team">{teamName}</span>
                         <span className="lo-dl-price">${entry.price}</span>
+                        <button
+                          className="lo-dl-remove"
+                          onClick={() => void handleRemoveEntry(entry._id)}
+                          title="Remove pick"
+                        >
+                          <X size={11} />
+                        </button>
                       </div>
                     );
                   })}
               </div>
-            </div>
+            </>
+          ) : (
+            <>
+              <div className="lo-section-header">
+                <span className="lo-section-title">DRAFT LOG</span>
+                <span className="lo-section-meta">0 picks</span>
+              </div>
+              <div className="lo-dl-empty">No picks yet.</div>
+            </>
           )}
         </div>
       </div>
+      {toast && (
+        <div className={`lo-toast lo-toast-${toast.type}`}>{toast.message}</div>
+      )}
     </div>
   );
 }
