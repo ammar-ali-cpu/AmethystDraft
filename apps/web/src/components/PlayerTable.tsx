@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { Search, Star, RotateCcw } from "lucide-react";
 import type { Player } from "../types/player";
 import { useWatchlist } from "../contexts/WatchlistContext";
@@ -235,6 +235,18 @@ export default function PlayerTable({
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const [starredOnly, setStarredOnly] = useState(false);
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   // Two-phase render: paint the first INITIAL_ROWS synchronously so the page
   // appears instantly, then expand to the full list as a low-priority transition.
   const INITIAL_ROWS = 60;
@@ -284,6 +296,7 @@ export default function PlayerTable({
         <div className="pt-search">
           <Search size={15} className="pt-search-icon" />
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search players by name..."
             value={searchQuery}

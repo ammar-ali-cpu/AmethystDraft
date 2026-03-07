@@ -534,6 +534,18 @@ function AuctionCenter({
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const [currentBid, setCurrentBid] = useState("");
   const [wonBy, setWonBy] = useState("");
@@ -858,6 +870,7 @@ function AuctionCenter({
           <div className="auction-search-bar">
             <span className="auction-search-icon">⊕</span>
             <input
+              ref={searchInputRef}
               type="text"
               placeholder={
                 selectedPlayer
