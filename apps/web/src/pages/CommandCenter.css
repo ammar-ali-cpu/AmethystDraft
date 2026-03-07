@@ -165,16 +165,7 @@
 .rank-cell { color: #6b4fa0; font-weight: 700; }
 .gb-cell { color: #6b4fa0; }
 
-.tier-cell { font-weight: 700; text-align: center; }
-.tier-cell.tier-elite { color: #a855f7; }
-.tier-cell.tier-mid   { color: #6366f1; }
-.tier-cell.tier-low   { color: #9080b0; }
-/* numeric tier classes */
-.tier-cell.tier-1 { color: #a855f7; }
-.tier-cell.tier-2 { color: #818cf8; }
-.tier-cell.tier-3 { color: #6366f1; }
-.tier-cell.tier-4 { color: #9080b0; }
-.tier-cell.tier-5 { color: #6b5a80; }
+.tier-cell { text-align: left; vertical-align: middle; }
 
 .green { color: #22c55e; }
 .dim   { color: #4a3a60; }
@@ -221,41 +212,56 @@
   flex: 1;
 }
 
-.pac-header { margin-bottom: 0.75rem; }
-
-.pac-pos-chip,
-.pac-team-chip,
-.pac-rank-chip {
-  display: inline-block;
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 0.15rem 0.5rem;
-  border-radius: 5px;
-  margin-right: 0.35rem;
-  letter-spacing: 0.04em;
+.pac-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
 }
-
-.pac-pos-chip  { background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
-.pac-team-chip { background: rgba(255,255,255,0.05);  color: #9080b0; border: 1px solid rgba(255,255,255,0.08); }
-.pac-rank-chip { background: rgba(255,255,255,0.05);  color: #9080b0; border: 1px solid rgba(255,255,255,0.08); }
 
 .pac-name-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.4rem;
+  gap: 1.5rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.pac-meta-row {
+  display: flex;
+  flex: 1;
+  justify-content: space-evenly;
+  align-items: center;
+}
+
+.pac-headshot {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(139, 92, 246, 0.4);
+  background: #1e1630;
+  flex-shrink: 0;
+}
+
+.pac-name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
 }
 
 .pac-name {
-  font-family: 'Bebas Neue', cursive;
-  font-size: 2.4rem;
+  font-size: 2rem;
+  font-weight: 800;
   color: #f0e6ff;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
   line-height: 1;
   margin: 0;
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  white-space: nowrap;
 }
 
 .pac-wl-badge {
@@ -264,27 +270,69 @@
   line-height: 1;
 }
 
-.pac-headshot {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(139, 92, 246, 0.3);
-  background: #1e1630;
+.pac-player-info {
+  display: contents;
 }
 
-.pac-meta {
+.pac-player-info strong {
+  color: #b8a8d8;
+  font-weight: 700;
+}
+
+.pac-meta-item {
+  font-size: 0.82rem;
+  color: #7a6a9a;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.pac-stats {
+  display: contents;
+}
+
+.pac-player-info {
+  display: contents;
+}
+
+.pac-meta-item { display: none; }
+
+.pac-stat {
   display: flex;
-  gap: 1rem;
-  margin-top: 0.4rem;
-  font-size: 0.78rem;
-  color: #9080b0;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
 }
 
-.pac-proj strong, .pac-adp strong { color: #e2d9f3; }
-.pac-proj .green { color: #22c55e; }
+.pac-stat-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #6b4fa0;
+  text-transform: uppercase;
+}
+
+.pac-stat-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #e2d9f3;
+  letter-spacing: 0.01em;
+}
+
+.pac-stat-value.green { color: #22c55e; }
+
+.pac-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: #fff !important;
+  font-size: 1rem;
+  font-weight: 800;
+}
 
 .pac-notes-label {
   font-size: 0.62rem;

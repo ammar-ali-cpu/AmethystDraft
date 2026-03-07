@@ -375,7 +375,7 @@ function LeftPanel({
                   posMarket.supply.length > 0 ? (
                     posMarket.supply.map(({ tier, count, avgVal }) => (
                       <tr key={tier}>
-                        <td className={`tier-cell tier-${tier}`}>{tier}</td>
+                        <td className="tier-cell"><span className="pac-tier-badge" style={{ background: (["#a855f7","#6366f1","#22c55e","#f59e0b","#6b7280"])[tier - 1] ?? "#6b7280" }}>{tier}</span></td>
                         <td>{count}</td>
                         <td>{avgVal != null ? `$${avgVal}` : "—"}</td>
                       </tr>
@@ -941,18 +941,7 @@ function AuctionCenter({
       ) : (
         <div className="player-auction-card">
           <div className="pac-header">
-            <span className="pac-pos-chip">{selectedPlayer.position}</span>
-            <span className="pac-team-chip">{selectedPlayer.team}</span>
-            <span className="pac-rank-chip">Tier {selectedPlayer.tier}</span>
             <div className="pac-name-row">
-              <h1 className="pac-name">
-                {selectedPlayer.name}
-                {isInWatchlist(selectedPlayer.id) && (
-                  <span className="pac-wl-badge" title="On your watchlist">
-                    ★
-                  </span>
-                )}
-              </h1>
               <img
                 src={selectedPlayer.headshot}
                 alt={selectedPlayer.name}
@@ -961,14 +950,36 @@ function AuctionCenter({
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
-            </div>
-            <div className="pac-meta">
-              <span className="pac-proj">
-                PROJ <strong className="green">${selectedPlayer.value}</strong>
-              </span>
-              <span className="pac-adp">
-                ADP <strong>{selectedPlayer.adp}</strong>
-              </span>
+              <h1 className="pac-name">
+                {selectedPlayer.name}
+                {isInWatchlist(selectedPlayer.id) && (
+                  <span className="pac-wl-badge" title="On your watchlist">
+                    ★
+                  </span>
+                )}
+              </h1>
+              <div className="pac-meta-row">
+                <div className="pac-stat">
+                  <span className="pac-stat-label">Position</span>
+                  <span className="pac-stat-value">{selectedPlayer.position}</span>
+                </div>
+                <div className="pac-stat">
+                  <span className="pac-stat-label">Team</span>
+                  <span className="pac-stat-value">{selectedPlayer.team}</span>
+                </div>
+                <div className="pac-stat">
+                  <span className="pac-stat-label">Tier</span>
+                  <span className="pac-stat-value pac-tier-badge" style={{ background: (["#a855f7","#6366f1","#22c55e","#f59e0b","#6b7280"])[selectedPlayer.tier - 1] ?? "#6b7280" }}>{selectedPlayer.tier}</span>
+                </div>
+                <div className="pac-stat">
+                  <span className="pac-stat-label">Proj</span>
+                  <span className="pac-stat-value green">${selectedPlayer.value}</span>
+                </div>
+                <div className="pac-stat">
+                  <span className="pac-stat-label">ADP</span>
+                  <span className="pac-stat-value">{selectedPlayer.adp}</span>
+                </div>
+              </div>
             </div>
           </div>
 
