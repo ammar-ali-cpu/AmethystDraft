@@ -4,6 +4,10 @@ import { useNavigate } from "react-router";
 import { useLeagueForm } from "../hooks/useLeagueForm";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { hittingStats, pitchingStats, keeperSlots } from "../types/league";
+import { createLeague } from "../api/leagues";
+import { useAuth } from "../contexts/AuthContext";
+import { useLeague } from "../contexts/LeagueContext";
+import "../components/AuthNavbar.css";
 import "./LeaguesCreate.css";
 
 type Step = 1 | 2 | 3 | 4;
@@ -18,8 +22,12 @@ const stepLabels: Record<Step, string> = {
 export default function LeagueCreate() {
   usePageTitle("Create League");
   const navigate = useNavigate();
+  const { token, user } = useAuth();
+  const { refreshLeagues } = useLeague();
 
   const [step, setStep] = useState<Step>(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     leagueName, setLeagueName,
@@ -32,7 +40,6 @@ export default function LeagueCreate() {
     teamNames,
     activeKeeperTeam, setActiveKeeperTeam,
     playerSearch, setPlayerSearch,
-    teamKeepers,
     currentKeepers, remainingBudget, completionPercent,
     filteredPlayers,
     toggleStat, updateRosterCount, updateTeamName, addKeeper, removeKeeper,
@@ -46,23 +53,52 @@ export default function LeagueCreate() {
     setStep((prev) => (prev - 1) as Step);
   };
 
-  const goNext = () => {
+  const goNext = async () => {
     if (step < 4) {
       setStep((prev) => (prev + 1) as Step);
       return;
     }
-    navigate("/leagues");   
-    console.log("Create league payload", {
-      leagueName,
-      teams,
-      budget,
-      rosterSlots,
-      playerPool,
-      selectedHitting,
-      selectedPitching,
-      teamNames,
-      teamKeepers,
-    });
+
+    // Extract abbreviation from labels like "Home Runs (HR)" → "HR"
+    const extractAbbr = (label: string) => {
+      const m = label.match(/\(([^)]+)\)$/);
+      return m ? m[1] : label;
+    };
+
+    const playerPoolMap: Record<string, "Mixed" | "AL" | "NL"> = {
+      "Mixed MLB": "Mixed",
+      "AL-Only": "AL",
+      "NL-Only": "NL",
+    };
+
+    const rosterSlotsMap = Object.fromEntries(
+      rosterSlots.map((s) => [s.position, s.count])
+    );
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const league = await createLeague(
+        {
+          name: leagueName,
+          teams,
+          budget,
+          rosterSlots: rosterSlotsMap,
+          scoringCategories: [
+            ...selectedHitting.map((s) => ({ name: extractAbbr(s), type: "batting" as const })),
+            ...selectedPitching.map((s) => ({ name: extractAbbr(s), type: "pitching" as const })),
+          ],
+          playerPool: playerPoolMap[playerPool] ?? "Mixed",
+        },
+        token!
+      );
+      refreshLeagues();
+      navigate(`/leagues/${league.id}/research`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create league");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -72,7 +108,13 @@ export default function LeagueCreate() {
           <span className="league-create-brand-icon">⚡</span>
           <span>DRAFTROOM</span>
         </div>
-        <div className="league-create-profile">◦</div>
+        <button
+            className="user-avatar-btn"
+            onClick={() => navigate("/account")}
+            title={user?.displayName}
+          >
+            {user?.displayName?.[0]?.toUpperCase() ?? "?"}
+          </button>
       </header>
 
       <div className="league-create-main">
@@ -380,8 +422,14 @@ export default function LeagueCreate() {
           )}
 
           <div className="league-create-actions">
-            <button type="button" className="league-create-primary" onClick={goNext}>
-              <span>{step === 4 ? "Create League" : "Continue"}</span>
+            {error && <p className="league-create-error">{error}</p>}
+            <button
+              type="button"
+              className="league-create-primary"
+              onClick={goNext}
+              disabled={submitting}
+            >
+              <span>{step === 4 ? (submitting ? "Creating…" : "Create League") : "Continue"}</span>
               {step !== 4 && <ChevronRight size={16} />}
             </button>
           </div>

@@ -76,7 +76,7 @@ const login: RequestHandler = async (req: Request, res: Response): Promise<void>
     }
 
     user.lastLogin = new Date();
-    await user.save();
+    await User.updateOne({ _id: user._id }, { lastLogin: user.lastLogin });
 
     const token = jwt.sign(
       { userId: user._id },

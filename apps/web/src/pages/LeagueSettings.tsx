@@ -2,14 +2,24 @@ import { useState } from "react";
 import { ArrowLeft, Search, Save } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useLeague } from "../contexts/LeagueContext";
+import type { League } from "../contexts/LeagueContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useLeagueForm } from "../hooks/useLeagueForm";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { hittingStats, pitchingStats, keeperSlots } from "../types/league";
+import { updateLeague } from "../api/leagues";
 import "./LeagueSettings.css";
 
-// TODO(db): Replace all local state with API load + save when league persistence is wired.
-
 type Section = "setup" | "scoring" | "teams" | "keepers";
+
+const abbr = (label: string) => label.match(/\(([^)]+)\)$/)?.[1] ?? label;
+
+const poolToForm: Record<string, "Mixed MLB" | "AL-Only" | "NL-Only"> = {
+  Mixed: "Mixed MLB", AL: "AL-Only", NL: "NL-Only",
+};
+const poolToApi: Record<string, "Mixed" | "AL" | "NL"> = {
+  "Mixed MLB": "Mixed", "AL-Only": "AL", "NL-Only": "NL",
+};
 
 const navItems: { id: Section; label: string; desc: string }[] = [
   { id: "setup",   label: "League Setup",  desc: "Name, teams, budget, roster" },
@@ -19,11 +29,25 @@ const navItems: { id: Section; label: string; desc: string }[] = [
 ];
 
 export default function LeagueSettings() {
-  const navigate = useNavigate();
-  const { league } = useLeague();
+  const { league, loading } = useLeague();
+  if (loading && !league) return (
+    <div className="ls-page">
+      <div className="ls-container" style={{ padding: "40px 0", color: "var(--text-muted)" }}>Loading…</div>
+    </div>
+  );
+  if (!league) return null;
+  return <LeagueSettingsForm league={league} />;
+}
 
-  usePageTitle(league ? `${league.name} Settings` : "League Settings");
+function LeagueSettingsForm({ league }: { league: League }) {
+  const navigate = useNavigate();
+  const { token } = useAuth();
+  const { refreshLeagues } = useLeague();
+
+  usePageTitle(`${league.name} Settings`);
   const [activeSection, setActiveSection] = useState<Section>("setup");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const {
     leagueName, setLeagueName,
@@ -41,17 +65,41 @@ export default function LeagueSettings() {
     filteredPlayers,
     toggleStat, updateRosterCount, updateTeamName, addKeeper, removeKeeper,
   } = useLeagueForm({
-    initialName:   league?.name   ?? "My League",
-    initialTeams:  league?.teams  ?? 12,
-    initialBudget: league?.budget ?? 260,
+    initialName:        league.name,
+    initialTeams:       league.teams,
+    initialBudget:      league.budget,
+    initialPlayerPool:  poolToForm[league.playerPool] ?? "Mixed MLB",
+    initialHitting:     hittingStats.filter((s) => league.scoringCategories.some((c) => c.type === "batting"  && c.name === abbr(s))),
+    initialPitching:    pitchingStats.filter((s) => league.scoringCategories.some((c) => c.type === "pitching" && c.name === abbr(s))),
+    initialRosterSlots: league.rosterSlots,
   });
 
-  const backPath = league ? `/leagues/${league.id}/research` : "/leagues";
+  const backPath = `/leagues/${league.id}/research`;
 
-  const handleSave = () => {
-    // TODO(db): POST/PATCH league settings to backend here.
-    console.log("Save settings", { leagueName, teams, budget, rosterSlots, playerPool, selectedHitting, selectedPitching, teamNames, teamKeepers });
-    navigate(backPath);
+  const handleSave = async () => {
+    if (!token) return;
+    setSaving(true);
+    setSaveError(null);
+    const rosterSlotsMap = Object.fromEntries(rosterSlots.map((s) => [s.position, s.count]));
+    try {
+      await updateLeague(league.id, {
+        name: leagueName,
+        teams,
+        budget,
+        rosterSlots: rosterSlotsMap,
+        scoringCategories: [
+          ...selectedHitting.map((s) => ({ name: abbr(s), type: "batting" as const })),
+          ...selectedPitching.map((s) => ({ name: abbr(s), type: "pitching" as const })),
+        ],
+        playerPool: poolToApi[playerPool] ?? "Mixed",
+      }, token);
+      refreshLeagues();
+      navigate(backPath);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -63,7 +111,7 @@ export default function LeagueSettings() {
         </button>
 
         <div className="ls-header">
-          <h1>{league?.name ?? "League"} Settings</h1>
+          <h1>{league.name} Settings</h1>
           <p>Edit any section independently — changes won't be saved until you click Save.</p>
         </div>
 
@@ -256,9 +304,10 @@ export default function LeagueSettings() {
             )}
 
             <div className="ls-save-row">
-              <button className="ls-save-btn" onClick={handleSave}>
+              {saveError && <p style={{ color: "var(--error, #f87171)", margin: "0 0 8px", fontSize: "13px" }}>{saveError}</p>}
+              <button className="ls-save-btn" onClick={handleSave} disabled={saving}>
                 <Save size={15} />
-                <span>Save Settings</span>
+                <span>{saving ? "Saving…" : "Save Settings"}</span>
               </button>
             </div>
           </div>

@@ -3,44 +3,15 @@ import AuthNavbar from "../components/AuthNavbar";
 import "./Leagues.css";
 import { useNavigate } from "react-router";
 import { usePageTitle } from "../hooks/usePageTitle";
-
+import { useLeague } from "../contexts/LeagueContext";
 
 export default function Leagues() {
   usePageTitle("My Leagues");
   const navigate = useNavigate();
-  // Mock data - replace with real API calls later
-  const leagues = [
-    {
-      id: "1",
-      name: "Fantasy Masters 2026",
-      status: "pre-draft",
-      teams: 12,
-      budget: 260,
-      draftDate: "March 15, 2026",
-    },
-    {
-      id: "2",
-      name: "Office League",
-      status: "in-progress",
-      teams: 10,
-      budget: 200,
-      draftDate: "March 1, 2026",
-    },
-  ];
+  const { allLeagues: leagues, loading } = useLeague();
 
-  const handleCreateLeague = () => {
-    navigate("/leagues/create");
-    console.log("Create league clicked");
-  };
-
-  const handleJoinLeague = () => {
-    navigate("/leagues/join");
-    console.log("Join league clicked");
-  };
-
-  const handleLeagueClick = (leagueId: string) => {
-    navigate(`/leagues/${leagueId}/research`);
-  };
+  const handleCreateLeague = () => navigate("/leagues/create");
+  const handleLeagueClick = (leagueId: string) => navigate(`/leagues/${leagueId}/research`);
 
   const handleSettingsClick = (e: React.MouseEvent, leagueId: string) => {
     e.stopPropagation();
@@ -49,14 +20,10 @@ export default function Leagues() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "pre-draft":
-        return "Pre-Draft";
-      case "in-progress":
-        return "In Progress";
-      case "completed":
-        return "Completed";
-      default:
-        return status;
+      case "pre-draft":   return "Pre-Draft";
+      case "in-progress": return "In Progress";
+      case "completed":   return "Completed";
+      default:            return status;
     }
   };
 
@@ -76,13 +43,13 @@ export default function Leagues() {
             <Plus size={18} />
             Create League
           </button>
-          <button className="btn-join-league" onClick={handleJoinLeague}>
-            <Users size={18} />
-            Join League
-          </button>
         </div>
 
-        {leagues.length > 0 ? (
+        {loading ? (
+          <div className="empty-state">
+            <p className="empty-state-text">Loading leagues…</p>
+          </div>
+        ) : leagues.length > 0 ? (
           <div className="leagues-grid">
             {leagues.map((league) => (
               <div
@@ -95,8 +62,8 @@ export default function Leagues() {
                     <h3 className="league-card-title">{league.name}</h3>
                   </div>
                   <div className="league-card-header-right">
-                    <span className={`league-card-status status-${league.status}`}>
-                      {getStatusLabel(league.status)}
+                    <span className={`league-card-status status-${league.draftStatus}`}>
+                      {getStatusLabel(league.draftStatus)}
                     </span>
                     <button
                       className="league-card-settings-btn"
@@ -116,10 +83,12 @@ export default function Leagues() {
                     <DollarSign />
                     <span>${league.budget} Budget</span>
                   </div>
-                  <div className="league-meta-item">
-                    <Calendar />
-                    <span>{league.draftDate}</span>
-                  </div>
+                  {league.draftDate && (
+                    <div className="league-meta-item">
+                      <Calendar />
+                      <span>{new Date(league.draftDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -131,7 +100,7 @@ export default function Leagues() {
             </div>
             <h2 className="empty-state-title">No Leagues Yet</h2>
             <p className="empty-state-text">
-              Create or join your first league to get started
+              Create your first league to get started
             </p>
           </div>
         )}

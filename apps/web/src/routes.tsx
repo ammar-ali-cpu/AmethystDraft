@@ -6,7 +6,6 @@ import ForgotPassword from './pages/ForgotPassword';
 import Account from './pages/Account';
 import Leagues from './pages/Leagues';
 import LeagueCreate from './pages/LeaguesCreate';
-import JoinLeague from "./pages/JoinLeague";
 import LeagueLayout from './components/LeagueLayout';
 import LeagueSettings from './pages/LeagueSettings';
 import MyDraft from './pages/MyDraft';
@@ -21,7 +20,6 @@ export const router = createBrowserRouter([
   { path: "/account", Component: Account },
   { path: "/leagues", Component: Leagues },
   { path: "/leagues/create", Component: LeagueCreate },
-  { path: "/leagues/join", Component: JoinLeague },
   {
     path: "/leagues/:id",
     Component: LeagueLayout,

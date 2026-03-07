@@ -1,49 +1,46 @@
+import { useState, useEffect } from "react";
 import { ArrowLeft, Search, Users, Trophy } from "lucide-react";
 import { useNavigate } from "react-router";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { getPublicLeagues, joinLeague, type PublicLeague } from "../api/leagues";
+import { useAuth } from "../contexts/AuthContext";
+import { useLeague } from "../contexts/LeagueContext";
 import "./JoinLeague.css";
-
-const publicLeagues = [
-  {
-    id: "1",
-    name: "Fantasy Masters 2026",
-    commissioner: "Sami",
-    teamsFilled: 8,
-    totalTeams: 12,
-    budget: 260,
-    format: "Rotisserie",
-  },
-  {
-    id: "2",
-    name: "Office League",
-    commissioner: "Ammar",
-    teamsFilled: 10,
-    totalTeams: 10,
-    budget: 200,
-    format: "Head-to-Head",
-  },
-  {
-    id: "3",
-    name: "Late Night Auction",
-    commissioner: "Kai",
-    teamsFilled: 6,
-    totalTeams: 12,
-    budget: 300,
-    format: "Rotisserie",
-  },
-];
 
 export default function JoinLeague() {
   usePageTitle("Join League");
   const navigate = useNavigate();
+  const { token } = useAuth();
+  const { refreshLeagues } = useLeague();
 
-  const handleBack = () => {
-    navigate("/leagues");
-  };
+  const [publicLeagues, setPublicLeagues] = useState<PublicLeague[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleJoin = (leagueId: string) => {
-    console.log("Joining league:", leagueId);
-    navigate("/leagues");
+  useEffect(() => {
+    if (!token) return;
+    getPublicLeagues(token)
+      .then(setPublicLeagues)
+      .catch(() => setError("Failed to load public leagues"))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const handleBack = () => navigate("/leagues");
+
+  const handleJoin = async (leagueId: string) => {
+    if (!token) return;
+    setJoiningId(leagueId);
+    setError(null);
+    try {
+      await joinLeague(leagueId, token);
+      refreshLeagues();
+      navigate("/leagues");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to join league");
+    } finally {
+      setJoiningId(null);
+    }
   };
 
   return (
@@ -82,40 +79,45 @@ export default function JoinLeague() {
         <section className="join-league-card">
           <div className="join-league-section-title">PUBLIC LEAGUES</div>
 
-          <div className="join-league-list">
-            {publicLeagues.map((league) => (
-              <div key={league.id} className="join-league-row">
-                <div className="join-league-row-left">
-                  <div className="join-league-avatar">
-                    <Trophy size={16} />
-                  </div>
+          {error && <p className="join-league-error">{error}</p>}
 
-                  <div>
-                    <div className="join-league-name">{league.name}</div>
-                    <div className="join-league-meta">
-                      Commissioner: {league.commissioner} • {league.format}
+          {loading ? (
+            <p className="join-league-loading">Loading…</p>
+          ) : publicLeagues.length === 0 ? (
+            <p className="join-league-loading">No open public leagues at the moment.</p>
+          ) : (
+            <div className="join-league-list">
+              {publicLeagues.map((league) => (
+                <div key={league.id} className="join-league-row">
+                  <div className="join-league-row-left">
+                    <div className="join-league-avatar">
+                      <Trophy size={16} />
+                    </div>
+                    <div>
+                      <div className="join-league-name">{league.name}</div>
+                      <div className="join-league-meta">
+                        Commissioner: {league.commissioner} • {league.scoringFormat}
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                <div className="join-league-row-stats">
-                  <div className="join-league-stat">
-                    <Users size={15} />
-                    <span>
-                      {league.teamsFilled}/{league.totalTeams}
-                    </span>
+                  <div className="join-league-row-stats">
+                    <div className="join-league-stat">
+                      <Users size={15} />
+                      <span>{league.teamsFilled}/{league.totalTeams}</span>
+                    </div>
+                    <div className="join-league-budget">${league.budget}</div>
+                    <button
+                      className="join-league-secondary-btn"
+                      onClick={() => handleJoin(league.id)}
+                      disabled={joiningId === league.id}
+                    >
+                      {joiningId === league.id ? "Joining…" : "Join"}
+                    </button>
                   </div>
-                  <div className="join-league-budget">${league.budget}</div>
-                  <button
-                    className="join-league-secondary-btn"
-                    onClick={() => handleJoin(league.id)}
-                  >
-                    Join
-                  </button>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       </main>
     </div>

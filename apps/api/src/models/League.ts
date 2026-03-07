@@ -2,6 +2,12 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export type DraftStatus = "pre-draft" | "in-progress" | "completed";
 export type ScoringFormat = "5x5" | "6x6" | "points";
+export type PlayerPool = "Mixed" | "AL" | "NL";
+
+export interface IScoringCategory {
+  name: string;
+  type: "batting" | "pitching";
+}
 
 // Roster slots stored as a plain object instead of Map to avoid TS schema conflicts
 export interface IRosterSlots {
@@ -16,8 +22,12 @@ export interface ILeague extends Document {
   hitterBudgetPct: number;
   teams: number;
   scoringFormat: ScoringFormat;
+  scoringCategories: IScoringCategory[];
   rosterSlots: IRosterSlots;
   draftStatus: DraftStatus;
+  isPublic: boolean;
+  draftDate?: Date;
+  playerPool: PlayerPool;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,6 +79,24 @@ const leagueSchema = new Schema<ILeague>(
       type: String,
       enum: ["pre-draft", "in-progress", "completed"],
       default: "pre-draft",
+    },
+    scoringCategories: [
+      {
+        name: { type: String, required: true },
+        type: { type: String, enum: ["batting", "pitching"], required: true },
+      },
+    ],
+    isPublic: {
+      type: Boolean,
+      default: false,
+    },
+    draftDate: {
+      type: Date,
+    },
+    playerPool: {
+      type: String,
+      enum: ["Mixed", "AL", "NL"],
+      default: "Mixed",
     },
   },
   { timestamps: true }

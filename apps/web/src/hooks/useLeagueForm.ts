@@ -8,23 +8,35 @@ interface UseLeagueFormOptions {
   initialName?: string;
   initialTeams?: number;
   initialBudget?: number;
+  initialPlayerPool?: "Mixed MLB" | "AL-Only" | "NL-Only";
+  initialHitting?: string[];
+  initialPitching?: string[];
+  initialRosterSlots?: Record<string, number>;
 }
 
 export function useLeagueForm({
   initialName = "My League",
   initialTeams = 12,
   initialBudget = 260,
+  initialPlayerPool,
+  initialHitting,
+  initialPitching,
+  initialRosterSlots,
 }: UseLeagueFormOptions = {}) {
   const [leagueName, setLeagueName] = useState(initialName);
   const [teams,      setTeams]      = useState(initialTeams);
   const [budget,     setBudget]     = useState(initialBudget);
-  const [rosterSlots, setRosterSlots] = useState<RosterSlot[]>(rosterDefaults);
+  const [rosterSlots, setRosterSlots] = useState<RosterSlot[]>(
+    initialRosterSlots
+      ? rosterDefaults.map((s) => ({ ...s, count: initialRosterSlots[s.position] ?? s.count }))
+      : rosterDefaults
+  );
 
-  const [playerPool, setPlayerPool] = useState<"Mixed MLB" | "AL-Only" | "NL-Only">("Mixed MLB");
-  const [selectedHitting, setSelectedHitting] = useState<string[]>([
+  const [playerPool, setPlayerPool] = useState<"Mixed MLB" | "AL-Only" | "NL-Only">(initialPlayerPool ?? "Mixed MLB");
+  const [selectedHitting, setSelectedHitting] = useState<string[]>(initialHitting ?? [
     "Runs (R)", "Home Runs (HR)", "Runs Batted In (RBI)", "Stolen Bases (SB)", "Batting Average (AVG)",
   ]);
-  const [selectedPitching, setSelectedPitching] = useState<string[]>([
+  const [selectedPitching, setSelectedPitching] = useState<string[]>(initialPitching ?? [
     "Wins (W)", "Strikeouts (K)", "Earned Run Average (ERA)", "WHIP (Walks + Hits per IP)", "Saves (SV)",
   ]);
 
