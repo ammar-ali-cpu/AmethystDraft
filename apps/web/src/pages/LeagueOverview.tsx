@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router";
-import { Settings, ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { useLeague } from "../contexts/LeagueContext";
 import { useAuth } from "../contexts/AuthContext";
 import { getRoster } from "../api/roster";
@@ -209,7 +208,6 @@ function TeamCard({ data }: { data: TeamData }) {
 export default function LeagueOverview() {
   const { league } = useLeague();
   const { token } = useAuth();
-  const navigate = useNavigate();
   usePageTitle(league ? `${league.name} Overview` : "League Overview");
 
   const [entries, setEntries] = useState<RosterEntry[]>([]);
@@ -368,15 +366,43 @@ export default function LeagueOverview() {
             </table>
           </div>
 
-          <div className="lo-settings-row">
-            <button
-              className="lo-settings-btn"
-              onClick={() => navigate(`/leagues/${league.id}/settings`)}
-            >
-              <Settings size={14} />
-              League Settings
-            </button>
-          </div>
+          {/* ── Draft Log ──────────────────────────────────────────────────── */}
+          {entries.length > 0 && (
+            <div className="lo-draft-log">
+              <div
+                className="lo-section-header"
+                style={{ marginTop: "1.5rem" }}
+              >
+                <span className="lo-section-title">DRAFT LOG</span>
+                <span className="lo-section-meta">{entries.length} picks</span>
+              </div>
+              <div className="lo-dl-list">
+                {[...entries]
+                  .sort(
+                    (a, b) =>
+                      new Date(a.acquiredAt ?? a.createdAt ?? 0).getTime() -
+                      new Date(b.acquiredAt ?? b.createdAt ?? 0).getTime(),
+                  )
+                  .map((entry, i) => {
+                    const teamIdx = league.memberIds.indexOf(entry.userId);
+                    const teamName =
+                      teamIdx !== -1
+                        ? (league.teamNames[teamIdx] ?? entry.userId)
+                        : entry.userId;
+                    const pickNum = i + 1;
+                    return (
+                      <div key={entry._id} className="lo-dl-row">
+                        <span className="lo-dl-pick">#{pickNum}</span>
+                        <span className="lo-dl-slot">{entry.rosterSlot}</span>
+                        <span className="lo-dl-name">{entry.playerName}</span>
+                        <span className="lo-dl-team">{teamName}</span>
+                        <span className="lo-dl-price">${entry.price}</span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

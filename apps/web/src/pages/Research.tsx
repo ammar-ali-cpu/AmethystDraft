@@ -3,7 +3,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { Database, BarChart3, Layers } from "lucide-react";
 import PlayerTable from "../components/PlayerTable";
 import type { Player } from "../types/player";
-import { getPlayers } from "../api/players";
+import { getPlayers, getPlayersCached } from "../api/players";
 import "./Research.css";
 
 export default function Research() {
@@ -15,13 +15,18 @@ export default function Research() {
   const [statBasis, setStatBasis] = useState<
     "projections" | "last-year" | "3-year-avg"
   >("projections");
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
+  const [players, setPlayers] = useState<Player[]>(
+    () => getPlayersCached(sortBy as "adp" | "value" | "name") ?? [],
+  );
+  const [isLoadingPlayers, setIsLoadingPlayers] = useState(
+    () => getPlayersCached(sortBy as "adp" | "value" | "name") === null,
+  );
   const [playersError, setPlayersError] = useState("");
 
   useEffect(() => {
     const loadPlayers = async () => {
-      setIsLoadingPlayers(true);
+      const cached = getPlayersCached(sortBy as "adp" | "value" | "name");
+      if (!cached) setIsLoadingPlayers(true);
       setPlayersError("");
 
       try {

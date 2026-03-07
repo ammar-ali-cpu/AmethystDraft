@@ -212,11 +212,9 @@ const addRosterEntry: RequestHandler = async (
     const requesterId = String(req.user!._id);
     const isCommissioner = String(league.commissionerId) === requesterId;
     if (userId && userId !== requesterId && !isCommissioner) {
-      res
-        .status(403)
-        .json({
-          message: "Only the commissioner can add entries for other teams",
-        });
+      res.status(403).json({
+        message: "Only the commissioner can add entries for other teams",
+      });
       return;
     }
     const resolvedUserId =

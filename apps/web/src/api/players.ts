@@ -11,6 +11,12 @@ interface PlayersResponse {
 
 const playersCache = new Map<string, Player[]>();
 
+export function getPlayersCached(
+  sortBy: "adp" | "value" | "name" = "value",
+): Player[] | null {
+  return playersCache.get(sortBy) ?? null;
+}
+
 export async function getPlayers(
   sortBy: "adp" | "value" | "name" = "value",
 ): Promise<Player[]> {

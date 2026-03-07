@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
-import { Zap, ChevronDown, Settings, LogOut, UserCog } from "lucide-react";
+import {
+  Zap,
+  ChevronDown,
+  Settings,
+  LogOut,
+  UserCog,
+  Bell,
+} from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useLeague } from "../contexts/LeagueContext";
 import "./AuthNavbar.css";
@@ -12,8 +19,11 @@ export default function AuthNavbar() {
   const { league, allLeagues } = useLeague();
   const [leagueDropdownOpen, setLeagueDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [alertTab, setAlertTab] = useState("All Alerts");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const alertsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -44,6 +54,18 @@ export default function AuthNavbar() {
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [userDropdownOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (alertsRef.current && !alertsRef.current.contains(e.target as Node)) {
+        setAlertsOpen(false);
+      }
+    };
+    if (alertsOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [alertsOpen]);
 
   const handleLogout = () => {
     logout();
@@ -160,6 +182,46 @@ export default function AuthNavbar() {
                 >
                   All Leagues
                 </button>
+              </div>
+            )}
+          </div>
+        )}
+        {league && (
+          <div className="nb-alerts-wrap" ref={alertsRef}>
+            <button
+              className="nb-alerts-btn"
+              onClick={() => setAlertsOpen((o) => !o)}
+              title="Intelligence Alerts"
+            >
+              <Bell size={15} />
+            </button>
+            {alertsOpen && (
+              <div className="nb-alerts-dropdown">
+                <div className="nb-alerts-header">
+                  <span className="nb-alerts-title">Intelligence Alerts</span>
+                </div>
+                <div className="nb-alerts-tabs">
+                  {[
+                    "All Alerts",
+                    "External Baseball",
+                    "Structural Signals",
+                  ].map((t) => (
+                    <button
+                      key={t}
+                      className={
+                        "nb-alert-tab" + (alertTab === t ? " active" : "")
+                      }
+                      onClick={() => setAlertTab(t)}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <div className="nb-alerts-list">
+                  <div className="nb-alerts-empty">
+                    No alerts — intelligence feed coming soon
+                  </div>
+                </div>
               </div>
             )}
           </div>

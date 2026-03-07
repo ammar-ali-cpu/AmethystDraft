@@ -1,155 +1,231 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useParams } from "react-router";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useLeague } from "../contexts/LeagueContext";
+import type { League } from "../contexts/LeagueContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useWatchlist } from "../contexts/WatchlistContext";
+import type { Player } from "../types/player";
+import { getPlayers } from "../api/players";
+import { addRosterEntry, getRoster, removeRosterEntry } from "../api/roster";
+import type { RosterEntry } from "../api/roster";
 import "./CommandCenter.css";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TODO: Replace all PLACEHOLDER_ values with real data from your backend/context
+// Data helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-// PLACEHOLDER_TEAMS: Replace with real league teams from MongoDB
-const PLACEHOLDER_TEAMS = [
-  { name: "My Team", budget: 260, open: 17, maxBid: 244, ppSpot: 15.3 },
-  { name: "Team B", budget: 180, open: 17, maxBid: 164, ppSpot: 10.6 },
-  { name: "Team C", budget: 165, open: 17, maxBid: 149, ppSpot: 9.7 },
-  { name: "Team D", budget: 188, open: 17, maxBid: 172, ppSpot: 11.1 },
-  { name: "Team E", budget: 150, open: 17, maxBid: 134, ppSpot: 8.8 },
-  { name: "Team F", budget: 172, open: 17, maxBid: 156, ppSpot: 10.1 },
-  { name: "Team G", budget: 197, open: 17, maxBid: 181, ppSpot: 11.6 },
-  { name: "Team H", budget: 159, open: 17, maxBid: 143, ppSpot: 9.4 },
-  { name: "Team I", budget: 183, open: 17, maxBid: 167, ppSpot: 10.8 },
-  { name: "Team J", budget: 168, open: 17, maxBid: 152, ppSpot: 9.9 },
-];
+interface TeamSummary {
+  name: string;
+  spent: number;
+  filled: number;
+  open: number;
+  remaining: number;
+  maxBid: number;
+  ppSpot: number;
+}
 
-// PLACEHOLDER_STANDINGS: Replace with real standings from MongoDB
-const PLACEHOLDER_STANDINGS = [
-  { rank: 1, name: "Team G", w: 58, l: 27, pct: ".682", gb: "--" },
-  { rank: 2, name: "My Team", w: 54, l: 31, pct: ".635", gb: "4.0" },
-  { rank: 3, name: "Team D", w: 51, l: 34, pct: ".600", gb: "7.0" },
-  { rank: 4, name: "Team I", w: 49, l: 36, pct: ".576", gb: "9.0" },
-  { rank: 5, name: "Team B", w: 47, l: 38, pct: ".553", gb: "11.0" },
-  { rank: 6, name: "Team F", w: 44, l: 41, pct: ".518", gb: "14.0" },
-  { rank: 7, name: "Team J", w: 42, l: 43, pct: ".494", gb: "16.0" },
-  { rank: 8, name: "Team C", w: 39, l: 46, pct: ".459", gb: "19.0" },
-  { rank: 9, name: "Team H", w: 35, l: 50, pct: ".412", gb: "23.0" },
-  { rank: 10, name: "Team E", w: 28, l: 57, pct: ".329", gb: "30.0" },
-];
+function computeTeamData(
+  league: League,
+  entries: RosterEntry[],
+): TeamSummary[] {
+  const totalSlots = Object.values(league.rosterSlots).reduce(
+    (a, b) => a + b,
+    0,
+  );
+  return league.teamNames.map((name, i) => {
+    const uid = league.memberIds[i] ?? "";
+    const mine = entries.filter((e) => e.userId === uid);
+    const spent = mine.reduce((s, e) => s + e.price, 0);
+    const filled = mine.length;
+    const open = Math.max(0, totalSlots - filled);
+    const remaining = Math.max(0, league.budget - spent);
+    const maxBid = open > 0 ? Math.max(1, remaining - (open - 1)) : 0;
+    const ppSpot = open > 0 ? +(remaining / open).toFixed(1) : 0;
+    return { name, spent, filled, open, remaining, maxBid, ppSpot };
+  });
+}
 
-// PLACEHOLDER_POSITION_BUDGET: Replace with real budget data from league/user context
-const PLACEHOLDER_POSITION_BUDGET = [
-  { pos: "SP", open: 3, target: 45, spent: 38, delta: +7 },
-  { pos: "RP", open: 1, target: 18, spent: 22, delta: -4 },
-  { pos: "C", open: 1, target: 12, spent: 0, delta: +12 },
-  { pos: "1B", open: 0, target: 30, spent: 34, delta: -4 },
-  { pos: "SS", open: 1, target: 28, spent: 21, delta: +7 },
-  { pos: "3B", open: 0, target: 25, spent: 28, delta: -3 },
-  { pos: "OF", open: 2, target: 40, spent: 52, delta: -12 },
-  { pos: "UTIL", open: 1, target: 20, spent: 0, delta: +20 },
-];
+function getStatByCategory(
+  player: Player,
+  catName: string,
+  catType: "batting" | "pitching",
+): number {
+  const name = catName.toUpperCase();
+  if (catType === "batting") {
+    const b = player.stats?.batting;
+    if (!b) return 0;
+    if (name === "HR") return b.hr;
+    if (name === "RBI") return b.rbi;
+    if (name === "R" || name === "RUNS") return b.runs;
+    if (name === "SB") return b.sb;
+    if (name === "AVG") return parseFloat(b.avg) || 0;
+    if (name === "OBP") return parseFloat(b.obp) || 0;
+    if (name === "SLG") return parseFloat(b.slg) || 0;
+    return 0;
+  } else {
+    const p = player.stats?.pitching;
+    if (!p) return 0;
+    if (name === "W" || name === "WINS") return p.wins;
+    if (name === "K" || name === "SO") return p.strikeouts;
+    if (name === "ERA") return parseFloat(p.era) || 0;
+    if (name === "WHIP") return parseFloat(p.whip) || 0;
+    if (name === "SV" || name === "SAVES") return p.saves;
+    if (name === "IP") return parseFloat(p.innings) || 0;
+    return 0;
+  }
+}
 
-// PLACEHOLDER_CATEGORY_PACE: Replace with real category tracking from MongoDB
-const PLACEHOLDER_CATEGORY_PACE = {
-  hitting: [
-    { cat: "HR", pct: 82 },
-    { cat: "RBI", pct: 91 },
-    { cat: "R", pct: 88 },
-    { cat: "SB", pct: 104 },
-    { cat: "AVG", pct: 97 },
-  ],
-  pitching: [
-    { cat: "W", pct: 94 },
-    { cat: "K", pct: 89 },
-    { cat: "ERA", pct: 101 },
-    { cat: "WHIP", pct: 98 },
-    { cat: "SV", pct: 73 },
-  ],
-};
+interface PositionMarket {
+  position: string;
+  avgWinPrice: number;
+  avgProjValue: number;
+  inflation: number;
+  remainingCount: number;
+  scarcityRankNum: number;
+  scarcityRankOf: number;
+  supply: Array<{ tier: number; count: number; avgVal: number | null }>;
+}
 
-// PLACEHOLDER_ALERTS: Replace with real intelligence alerts from backend/AI service
-const PLACEHOLDER_ALERTS = [
-  {
-    id: 1,
-    type: "injury",
-    icon: "⚠️",
-    title: "Injury Update: Ronald Acuña Jr.",
-    body: "Removed from game with knee soreness. Evaluated day-to-day.",
-    link: "View in My Draft",
-    time: "2m ago",
-  },
-  {
-    id: 2,
-    type: "structural",
-    icon: "🔗",
-    title: "Structural Signal: Closer Monopoly Detected",
-    body: "Team X now controls 3 of top 8 projected saves sources. Market scarcity warning.",
-    link: "View in League Overview",
-    time: "15m ago",
-  },
-  {
-    id: 3,
-    type: "trade",
-    icon: "📢",
-    title: "Trade Alert: demotion — Camilo Doval.",
-    body: "Removed from closer role by SF. Ryan Walker takes over source of saves.",
-    link: "View in League Overview",
-    time: "45m ago",
-  },
-  {
-    id: 4,
-    type: "structural",
-    icon: "🔗",
-    title: "Structural Alert: Budget Compression Alert",
-    body: "League liquidity below threshold after consecutive premium nominations.",
-    link: "View in League Overview",
-    time: "1h ago",
-  },
-];
+function computePositionMarket(
+  position: string | null,
+  allPlayers: Player[],
+  draftedIds: Set<string>,
+  rosterEntries: RosterEntry[],
+): PositionMarket | null {
+  if (!position || allPlayers.length === 0) return null;
+  const posPlayers = allPlayers.filter((p) => p.position === position);
+  const draftedAtPos = posPlayers.filter((p) => draftedIds.has(p.id));
+  const remaining = posPlayers.filter((p) => !draftedIds.has(p.id));
+  const draftedEntries = rosterEntries.filter((e) =>
+    draftedAtPos.some((p) => p.id === e.externalPlayerId),
+  );
+  const avgWinPrice = draftedEntries.length
+    ? Math.round(
+        draftedEntries.reduce((s, e) => s + e.price, 0) / draftedEntries.length,
+      )
+    : 0;
+  const avgProjValue = remaining.length
+    ? Math.round(remaining.reduce((s, p) => s + p.value, 0) / remaining.length)
+    : 0;
+  const inflation =
+    avgWinPrice > 0 && avgProjValue > 0
+      ? Math.round((avgWinPrice / avgProjValue - 1) * 100)
+      : 0;
 
-// PLACEHOLDER_SP_SUPPLY: Replace with real positional supply data
-const PLACEHOLDER_SP_SUPPLY = [
-  { tier: "Elite", remaining: 0, avgPrice: "--" },
-  { tier: "Mid", remaining: 0, avgPrice: "--" },
-  { tier: "Low", remaining: 8, avgPrice: "$36" },
-];
+  const allPositions = [...new Set(allPlayers.map((p) => p.position))];
+  const remainingByPos = allPositions
+    .map((pos) => ({
+      pos,
+      count: allPlayers.filter(
+        (p) => p.position === pos && !draftedIds.has(p.id),
+      ).length,
+    }))
+    .sort((a, b) => a.count - b.count);
+  const scarcityRankNum =
+    remainingByPos.findIndex((r) => r.pos === position) + 1;
+  const scarcityRankOf = remainingByPos.length;
 
-// PLACEHOLDER_MARKET_STATS: Replace with real market data per position
-const PLACEHOLDER_MARKET_STATS = {
-  position: "SP",
-  avgWinningPrice: 30,
-  projectedValue: 28,
-  inflation: +7,
-  remainingAtPos: 8,
-  scarcityRank: { rank: 1, total: 8 },
-};
+  const allTiers = [...new Set(remaining.map((p) => p.tier))].sort(
+    (a, b) => a - b,
+  );
+  const avgOrNull = (arr: Player[]) =>
+    arr.length
+      ? Math.round(arr.reduce((s, p) => s + p.value, 0) / arr.length)
+      : null;
+
+  return {
+    position,
+    avgWinPrice,
+    avgProjValue,
+    inflation,
+    remainingCount: remaining.length,
+    scarcityRankNum,
+    scarcityRankOf,
+    supply: allTiers.map((tier) => {
+      const arr = remaining.filter((p) => p.tier === tier);
+      return { tier, count: arr.length, avgVal: avgOrNull(arr) };
+    }),
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PaceBadge({ pct }: { pct: number }) {
-  const color = pct >= 100 ? "#22c55e" : pct >= 85 ? "#f59e0b" : "#f87171";
-  return (
-    <span className="pace-badge" style={{ color }}>
-      {pct}%
-    </span>
+function DraftLog({
+  rosterEntries,
+  league,
+}: {
+  rosterEntries: RosterEntry[];
+  league: League | null;
+}) {
+  if (rosterEntries.length === 0) return null;
+  const sorted = [...rosterEntries].sort(
+    (a, b) =>
+      new Date(a.acquiredAt ?? a.createdAt ?? 0).getTime() -
+      new Date(b.acquiredAt ?? b.createdAt ?? 0).getTime(),
   );
-}
-
-function DeltaBadge({ delta }: { delta: number }) {
-  const color = delta >= 0 ? "#22c55e" : "#f87171";
   return (
-    <span className="delta-badge" style={{ color }}>
-      {delta >= 0 ? `+${delta}` : delta}
-    </span>
+    <>
+      <div className="market-section-label" style={{ marginTop: "1rem" }}>
+        DRAFT LOG
+      </div>
+      <div className="draft-log-list">
+        {sorted.map((entry, i) => {
+          const teamIdx = league?.memberIds.indexOf(entry.userId) ?? -1;
+          const teamName =
+            teamIdx !== -1
+              ? (league?.teamNames[teamIdx] ?? entry.userId)
+              : entry.userId;
+          const pickNum = i + 1;
+          return (
+            <div key={entry._id} className="draft-log-row">
+              <span className="dl-pick">#{pickNum}</span>
+              <span className="dl-slot">{entry.rosterSlot}</span>
+              <span className="dl-name">{entry.playerName}</span>
+              <span className="dl-team">{teamName}</span>
+              <span className="dl-price">${entry.price}</span>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
 function LeftPanel({
   activeTab,
   setActiveTab,
+  league,
+  teamData,
+  myTeamName,
+  selectedPlayerPosition,
+  allPlayers,
+  draftedIds,
+  rosterEntries,
 }: {
   activeTab: string;
   setActiveTab: (t: string) => void;
+  league: League | null;
+  teamData: TeamSummary[];
+  myTeamName: string;
+  selectedPlayerPosition: string | null;
+  allPlayers: Player[];
+  draftedIds: Set<string>;
+  rosterEntries: RosterEntry[];
 }) {
+  const posMarket = useMemo(
+    () =>
+      computePositionMarket(
+        selectedPlayerPosition,
+        allPlayers,
+        draftedIds,
+        rosterEntries,
+      ),
+    [selectedPlayerPosition, allPlayers, draftedIds, rosterEntries],
+  );
+
   return (
     <div className="cc-left">
       <div className="cc-tabs">
@@ -166,48 +242,68 @@ function LeftPanel({
 
       {activeTab === "Market" && (
         <div className="cc-panel-content">
-          <div className="market-section-label">
-            <span>{PLACEHOLDER_MARKET_STATS.position} MARKET</span>
-            <span className="pos-chip">
-              {PLACEHOLDER_MARKET_STATS.position}
-            </span>
-          </div>
-          <div className="market-stat-row">
-            <span className="msr-label">AVG WINNING PRICE</span>
-            <span className="msr-value">
-              ${PLACEHOLDER_MARKET_STATS.avgWinningPrice}
-            </span>
-          </div>
-          <div className="market-stat-row">
-            <span className="msr-label">PROJECTED VALUE</span>
-            <span className="msr-value green">
-              ${PLACEHOLDER_MARKET_STATS.projectedValue}
-            </span>
-          </div>
-          <div className="market-stat-row">
-            <span className="msr-label">INFLATION</span>
-            <span className="msr-value yellow">
-              +{PLACEHOLDER_MARKET_STATS.inflation}%
-            </span>
-          </div>
-          <div className="market-stat-row">
-            <span className="msr-label">REMAINING AT POS</span>
-            <span className="msr-value">
-              {PLACEHOLDER_MARKET_STATS.remainingAtPos}
-            </span>
-          </div>
-          <div className="market-stat-row">
-            <span className="msr-label">SCARCITY RANK</span>
-            <span className="msr-value">
-              {PLACEHOLDER_MARKET_STATS.scarcityRank.rank}{" "}
-              <span className="msr-sub">
-                / {PLACEHOLDER_MARKET_STATS.scarcityRank.total}
+          <>
+            <div className="market-section-label">
+              {posMarket ? posMarket.position : "—"} MARKET
+              {posMarket && (
+                <span className="pos-chip">{posMarket.position}</span>
+              )}
+            </div>
+            <div className="market-stat-row">
+              <span className="msr-label">AVG WINNING PRICE</span>
+              <span className="msr-value">
+                {posMarket && posMarket.avgWinPrice > 0
+                  ? `$${posMarket.avgWinPrice}`
+                  : "—"}
               </span>
-            </span>
-          </div>
-
-          <div className="cc-divider" />
-
+            </div>
+            <div className="market-stat-row">
+              <span className="msr-label">PROJECTED VALUE</span>
+              <span className="msr-value green">
+                {posMarket && posMarket.avgProjValue > 0
+                  ? `$${posMarket.avgProjValue}`
+                  : "—"}
+              </span>
+            </div>
+            <div className="market-stat-row">
+              <span className="msr-label">INFLATION</span>
+              <span
+                className={`msr-value ${
+                  posMarket && posMarket.inflation > 0
+                    ? "yellow"
+                    : posMarket && posMarket.inflation < 0
+                      ? "green"
+                      : ""
+                }`}
+              >
+                {posMarket && posMarket.avgWinPrice > 0
+                  ? `${posMarket.inflation > 0 ? "+" : ""}${posMarket.inflation}%`
+                  : "—"}
+              </span>
+            </div>
+            <div className="market-stat-row">
+              <span className="msr-label">REMAINING AT POS</span>
+              <span className="msr-value">
+                {posMarket ? posMarket.remainingCount : "—"}
+              </span>
+            </div>
+            <div className="market-stat-row">
+              <span className="msr-label">SCARCITY RANK</span>
+              <span className="msr-value">
+                {posMarket ? (
+                  <>
+                    {posMarket.scarcityRankNum}{" "}
+                    <span className="msr-sub">
+                      / {posMarket.scarcityRankOf}
+                    </span>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </span>
+            </div>
+            <div className="cc-divider" />
+          </>
           <div className="market-section-label">TEAM LIQUIDITY</div>
           <table className="liquidity-table">
             <thead>
@@ -220,44 +316,80 @@ function LeftPanel({
               </tr>
             </thead>
             <tbody>
-              {PLACEHOLDER_TEAMS.map((t) => (
-                <tr
-                  key={t.name}
-                  className={t.name === "My Team" ? "my-team-row" : ""}
-                >
-                  <td className="team-name-cell">{t.name}</td>
-                  <td>${t.budget}</td>
-                  <td>{t.open}</td>
-                  <td className="green">${t.maxBid}</td>
-                  <td>${t.ppSpot}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="cc-divider" />
-
-          <div className="market-section-label">SP SUPPLY</div>
-          <table className="supply-table">
-            <thead>
-              <tr>
-                <th>TIER</th>
-                <th>REMAINING</th>
-                <th>AVG $</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PLACEHOLDER_SP_SUPPLY.map((s) => (
-                <tr key={s.tier}>
-                  <td className={"tier-cell tier-" + s.tier.toLowerCase()}>
-                    {s.tier}
+              {teamData.length > 0 ? (
+                teamData.map((t) => (
+                  <tr
+                    key={t.name}
+                    className={t.name === myTeamName ? "my-team-row" : ""}
+                  >
+                    <td className="team-name-cell">{t.name}</td>
+                    <td>${t.remaining}</td>
+                    <td>{t.open}</td>
+                    <td className="green">${t.maxBid}</td>
+                    <td>${t.ppSpot}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="dim"
+                    style={{ textAlign: "center", padding: "1rem 0" }}
+                  >
+                    {league ? "No picks logged yet" : "No league loaded"}
                   </td>
-                  <td>{s.remaining}</td>
-                  <td>{s.avgPrice}</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
+          <>
+            <div className="cc-divider" />
+            <div className="market-section-label">
+              {posMarket ? posMarket.position : "—"} SUPPLY
+            </div>
+            <table className="supply-table">
+              <thead>
+                <tr>
+                  <th>TIER</th>
+                  <th>REMAINING</th>
+                  <th>AVG $</th>
+                </tr>
+              </thead>
+              <tbody>
+                {posMarket ? (
+                  posMarket.supply.length > 0 ? (
+                    posMarket.supply.map(({ tier, count, avgVal }) => (
+                      <tr key={tier}>
+                        <td className={`tier-cell tier-${tier}`}>{tier}</td>
+                        <td>{count}</td>
+                        <td>{avgVal != null ? `$${avgVal}` : "—"}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="dim"
+                        style={{ textAlign: "center", padding: "0.5rem 0" }}
+                      >
+                        None remaining
+                      </td>
+                    </tr>
+                  )
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="dim"
+                      style={{ textAlign: "center", padding: "0.5rem 0" }}
+                    >
+                      Select a player to see supply
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </>
         </div>
       )}
 
@@ -267,25 +399,41 @@ function LeftPanel({
             <thead>
               <tr>
                 <th>TEAM</th>
-                <th>LEFT</th>
+                <th>$ LEFT</th>
+                <th>SPENT</th>
                 <th>OPEN</th>
                 <th>MAX</th>
               </tr>
             </thead>
             <tbody>
-              {PLACEHOLDER_TEAMS.map((t) => (
-                <tr
-                  key={t.name}
-                  className={t.name === "My Team" ? "my-team-row" : ""}
-                >
-                  <td className="team-name-cell">{t.name}</td>
-                  <td>${t.budget}</td>
-                  <td>{t.open}</td>
-                  <td className="green">${t.maxBid}</td>
+              {teamData.length > 0 ? (
+                teamData.map((t) => (
+                  <tr
+                    key={t.name}
+                    className={t.name === myTeamName ? "my-team-row" : ""}
+                  >
+                    <td className="team-name-cell">{t.name}</td>
+                    <td>${t.remaining}</td>
+                    <td>${t.spent}</td>
+                    <td>{t.open}</td>
+                    <td className="green">${t.maxBid}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="dim"
+                    style={{ textAlign: "center", padding: "1rem 0" }}
+                  >
+                    {league ? "No teams yet" : "No league loaded"}
+                  </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
+
+          <DraftLog rosterEntries={rosterEntries} league={league} />
         </div>
       )}
 
@@ -303,385 +451,794 @@ function LeftPanel({
               </tr>
             </thead>
             <tbody>
-              {PLACEHOLDER_STANDINGS.map((s) => (
+              {(league?.teamNames ?? []).map((name, i) => (
                 <tr
-                  key={s.rank}
-                  className={s.name === "My Team" ? "my-team-row" : ""}
+                  key={name}
+                  className={name === myTeamName ? "my-team-row" : ""}
                 >
-                  <td className="rank-cell">{s.rank}</td>
-                  <td className="team-name-cell">{s.name}</td>
-                  <td>{s.w}</td>
-                  <td>{s.l}</td>
-                  <td>{s.pct}</td>
-                  <td className="gb-cell">{s.gb}</td>
+                  <td className="rank-cell">{i + 1}</td>
+                  <td className="team-name-cell">{name}</td>
+                  <td className="dim">—</td>
+                  <td className="dim">—</td>
+                  <td className="dim">—</td>
+                  <td className="gb-cell dim">—</td>
                 </tr>
               ))}
+              {!league && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="dim"
+                    style={{ textAlign: "center", padding: "1rem 0" }}
+                  >
+                    No league loaded
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
+          <DraftLog rosterEntries={rosterEntries} league={league} />
         </div>
       )}
     </div>
   );
 }
 
-function AuctionCenter() {
-  // PLACEHOLDER_SELECTED_PLAYER: Replace with real selected player from auction state/socket
-  const [selectedPlayer] = useState({
-    name: "Freddy Peralta",
-    position: "SP",
-    team: "MIL",
-    rank: 6,
-    projValue: 28,
-    adp: 30,
-    mlbId: 669302,
-    stats: { era: "3.79", k9: "11.4", whip: "1.15", ip: "168" },
-    categoryImpact: [
-      { cat: "W", teamPace: 94, withPlayer: 0, delta: 0 },
-      { cat: "K", teamPace: 189, withPlayer: 213, delta: +21 },
-      { cat: "ERA", teamPace: 3.82, withPlayer: 3.79, delta: +0.03 },
-      { cat: "SV", teamPace: 0, withPlayer: 12, delta: +12 },
-    ],
-    marketAvg: 30,
-    targetRange: { low: 29, high: 33 },
-    notes: "Must get. Rarely injured. Reliable.",
-  });
+function AuctionCenter({
+  rosterEntries,
+  refreshRoster,
+  allPlayers,
+  selectedPlayer,
+  setSelectedPlayer,
+  draftedIds,
+  myTeamEntries,
+}: {
+  rosterEntries: RosterEntry[];
+  refreshRoster: () => void;
+  allPlayers: Player[];
+  selectedPlayer: Player | null;
+  setSelectedPlayer: (p: Player | null) => void;
+  draftedIds: Set<string>;
+  myTeamEntries: RosterEntry[];
+}) {
+  const { id: leagueId } = useParams<{ id: string }>();
+  const { league } = useLeague();
+  const { token } = useAuth();
+  const { isInWatchlist } = useWatchlist();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const [currentBid, setCurrentBid] = useState("");
-  // PLACEHOLDER_WINNER: Replace with real auction result from socket/backend
-  const [wonBy, setWonBy] = useState("My Team");
-  const [finalPrice, setFinalPrice] = useState("28");
-  const [draftedToSlot, setDraftedToSlot] = useState("SP");
+  const [wonBy, setWonBy] = useState("");
+  const [finalPrice, setFinalPrice] = useState("");
+  const [draftedToSlot, setDraftedToSlot] = useState("");
   const [statView, setStatView] = useState<"hitting" | "pitching">("pitching");
-  const [showAlerts, setShowAlerts] = useState(false);
-  const [alertTab, setAlertTab] = useState("All Alerts");
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+  const [playerNotes, setPlayerNotes] = useState<Map<string, string>>(
+    new Map(),
+  );
+  const [redoStack, setRedoStack] = useState<RosterEntry[]>([]);
 
-  const headshotUrl = `https://img.mlbstatic.com/mlb-photos/image/upload/w_120,q_auto:best/v1/people/${selectedPlayer.mlbId}/headshot/67/current`;
+  const showToast = (
+    message: string,
+    type: "success" | "error" | "info" = "success",
+  ) => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Seed "Won By" default when league loads
+  useEffect(() => {
+    if (league && !wonBy) setWonBy(league.teamNames[0] ?? "");
+  }, [league, wonBy]);
+
+  // Seed slot default when league loads
+  useEffect(() => {
+    if (league && !draftedToSlot)
+      setDraftedToSlot(Object.keys(league.rosterSlots)[0] ?? "SP");
+  }, [league, draftedToSlot]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // When a new player is selected, initialise stat view + price guess
+  useEffect(() => {
+    if (!selectedPlayer) return;
+    const isPitcher = ["SP", "RP", "P"].includes(selectedPlayer.position);
+    setStatView(isPitcher ? "pitching" : "hitting");
+    setFinalPrice(String(selectedPlayer.value));
+  }, [selectedPlayer]);
+
+  const dropdownResults = (() => {
+    if (searchQuery.length < 1) return [];
+    const q = searchQuery.toLowerCase().trim();
+    const available = allPlayers.filter((p) => !draftedIds.has(p.id));
+    const scored = available.flatMap((p) => {
+      const full = p.name.toLowerCase();
+      const parts = full.split(/\s+/);
+      // Tier 0: full name starts with query
+      if (full.startsWith(q)) return [{ p, score: 0 }];
+      // Tier 1: any name part (first/last) starts with query
+      if (parts.some((part) => part.startsWith(q))) return [{ p, score: 1 }];
+      // Tier 2: any word in the name contains the query
+      if (parts.some((part) => part.includes(q))) return [{ p, score: 2 }];
+      // Tier 3: full name contains query (e.g. mid-word)
+      if (full.includes(q)) return [{ p, score: 3 }];
+      return [];
+    });
+    return scored
+      .sort((a, b) => a.score - b.score || (a.p.adp ?? 999) - (b.p.adp ?? 999))
+      .map((x) => x.p)
+      .slice(0, 8);
+  })();
+
+  const handleSelectPlayer = (player: Player) => {
+    setSelectedPlayer(player);
+    setSearchQuery("");
+    setShowDropdown(false);
+  };
+
+  const handleLogResult = async () => {
+    if (!selectedPlayer || !leagueId || !token || !league) return;
+    const teamIdx = league.teamNames.indexOf(wonBy);
+    if (teamIdx === -1) {
+      showToast("Team not found in league", "error");
+      return;
+    }
+    const userId = league.memberIds[teamIdx];
+    const price = parseInt(finalPrice, 10) || 1;
+    const playerName = selectedPlayer.name;
+    setSubmitting(true);
+    // Dismiss player immediately
+    setSelectedPlayer(null);
+    setCurrentBid("");
+    setFinalPrice("");
+    try {
+      await addRosterEntry(
+        leagueId,
+        {
+          externalPlayerId: selectedPlayer.id,
+          playerName: selectedPlayer.name,
+          playerTeam: selectedPlayer.team,
+          positions: [selectedPlayer.position],
+          price,
+          rosterSlot: draftedToSlot,
+          isKeeper: false,
+          userId,
+        },
+        token,
+      );
+      setRedoStack([]);
+      refreshRoster();
+      showToast(
+        `✓ ${playerName} drafted to ${draftedToSlot} for $${price}`,
+        "success",
+      );
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Failed to log result",
+        "error",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!leagueId || !token || rosterEntries.length === 0) return;
+    const sorted = [...rosterEntries].sort(
+      (a, b) =>
+        new Date(a.acquiredAt ?? a.createdAt ?? 0).getTime() -
+        new Date(b.acquiredAt ?? b.createdAt ?? 0).getTime(),
+    );
+    const entry = sorted[sorted.length - 1];
+    try {
+      await removeRosterEntry(leagueId, entry._id, token);
+      setRedoStack((prev) => [...prev, entry]);
+      refreshRoster();
+      showToast(`↩ Undid ${entry.playerName}`, "info");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Undo failed", "error");
+    }
+  };
+
+  const handleRedo = async () => {
+    if (!leagueId || !token || redoStack.length === 0 || !league) return;
+    const entry = redoStack[redoStack.length - 1];
+    try {
+      await addRosterEntry(
+        leagueId,
+        {
+          externalPlayerId: entry.externalPlayerId,
+          playerName: entry.playerName,
+          playerTeam: entry.playerTeam,
+          positions: entry.positions,
+          price: entry.price,
+          rosterSlot: entry.rosterSlot,
+          isKeeper: entry.isKeeper,
+          userId: entry.userId,
+        },
+        token,
+      );
+      setRedoStack((prev) => prev.slice(0, -1));
+      refreshRoster();
+      showToast(`↪ Redid ${entry.playerName}`, "info");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Redo failed", "error");
+    }
+  };
+
+  // Derived pitching / batting stat refs
+  const sp = selectedPlayer?.stats?.pitching;
+  const sb = selectedPlayer?.stats?.batting;
+  const k9 = sp
+    ? (() => {
+        const ip = parseFloat(sp.innings);
+        return ip > 0 ? ((sp.strikeouts / ip) * 9).toFixed(1) : "--";
+      })()
+    : "--";
+
+  // Live price derived values
+  const isP =
+    selectedPlayer !== null &&
+    ["SP", "RP", "P"].includes(selectedPlayer.position);
+  const posEntries = rosterEntries.filter(
+    (e) =>
+      allPlayers.find((p) => p.id === e.externalPlayerId)?.position ===
+      selectedPlayer?.position,
+  );
+  const marketAvg = selectedPlayer
+    ? posEntries.length
+      ? Math.round(
+          posEntries.reduce((s, e) => s + e.price, 0) / posEntries.length,
+        )
+      : selectedPlayer.value
+    : 0;
+  const targetLow = selectedPlayer
+    ? Math.max(1, Math.round(marketAvg * 0.93))
+    : 0;
+  const targetHigh = selectedPlayer ? Math.round(marketAvg * 1.1) : 0;
+
+  // Category impact rows
+  const catImpactRows = (() => {
+    if (!selectedPlayer || !league?.scoringCategories)
+      return [] as Array<{
+        name: string;
+        teamPaceStr: string;
+        withPlayerStr: string;
+        deltaStr: string;
+        improved: boolean;
+      }>;
+    const relevantCats = league.scoringCategories.filter((cat) =>
+      isP ? cat.type === "pitching" : cat.type === "batting",
+    );
+    return relevantCats.map((cat) => {
+      const isRate = ["ERA", "WHIP"].includes(cat.name.toUpperCase());
+      if (isRate) {
+        const vals = myTeamEntries
+          .map((e) => {
+            const player = allPlayers.find((a) => a.id === e.externalPlayerId);
+            if (!player) return 0;
+            return getStatByCategory(player, cat.name, cat.type);
+          })
+          .filter((v) => v > 0);
+        const teamPace = vals.length
+          ? vals.reduce((a, b) => a + b, 0) / vals.length
+          : 0;
+        const playerStat = getStatByCategory(
+          selectedPlayer,
+          cat.name,
+          cat.type,
+        );
+        const delta = +(teamPace - playerStat).toFixed(2);
+        return {
+          name: cat.name,
+          teamPaceStr: teamPace > 0 ? teamPace.toFixed(2) : "—",
+          withPlayerStr: playerStat > 0 ? playerStat.toFixed(2) : "—",
+          deltaStr: delta > 0 ? `+${delta.toFixed(2)}` : delta.toFixed(2),
+          improved: delta > 0,
+        };
+      } else {
+        const teamPace = myTeamEntries.reduce((sum, entry) => {
+          const player = allPlayers.find(
+            (a) => a.id === entry.externalPlayerId,
+          );
+          return player
+            ? sum + getStatByCategory(player, cat.name, cat.type)
+            : sum;
+        }, 0);
+        const playerStat = getStatByCategory(
+          selectedPlayer,
+          cat.name,
+          cat.type,
+        );
+        return {
+          name: cat.name,
+          teamPaceStr: Math.round(teamPace).toString(),
+          withPlayerStr: Math.round(teamPace + playerStat).toString(),
+          deltaStr:
+            playerStat > 0
+              ? `+${Math.round(playerStat)}`
+              : Math.round(playerStat).toString(),
+          improved: playerStat > 0,
+        };
+      }
+    });
+  })();
+
+  const teamNames = league?.teamNames ?? [];
+  const slotOptions = league?.rosterSlots
+    ? Object.keys(league.rosterSlots)
+    : ["SP", "RP", "C", "1B", "2B", "SS", "3B", "OF", "UTIL", "Bench"];
 
   return (
     <div className="cc-center">
-      {/* Search bar */}
-      <div className="auction-search-bar">
-        <span className="auction-search-icon">⊕</span>
-        {/* PLACEHOLDER: Wire this to player search + socket nomination */}
-        <input
-          type="text"
-          placeholder="Search player to load into auction..."
-          className="auction-search-input"
-        />
-      </div>
-
-      {/* Player card */}
-      <div className="player-auction-card">
-        <div className="pac-header">
-          <span className="pac-pos-chip">{selectedPlayer.position}</span>
-          <span className="pac-team-chip">{selectedPlayer.team}</span>
-          <span className="pac-rank-chip">#{selectedPlayer.rank}</span>
-          <div className="pac-name-row">
-            <h1 className="pac-name">{selectedPlayer.name}</h1>
-            <img
-              src={headshotUrl}
-              alt={selectedPlayer.name}
-              className="pac-headshot"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
+      {/* Search bar + undo/redo */}
+      <div className="cc-search-wrap" ref={searchRef}>
+        <div className="cc-search-inner">
+          <div className="auction-search-bar">
+            <span className="auction-search-icon">⊕</span>
+            <input
+              type="text"
+              placeholder={
+                selectedPlayer
+                  ? `${selectedPlayer.name} — type to switch...`
+                  : "Search player to load into auction..."
+              }
+              className="auction-search-input"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowDropdown(e.target.value.length >= 1);
+              }}
+              onFocus={() => {
+                if (searchQuery.length >= 1) setShowDropdown(true);
               }}
             />
-          </div>
-          <div className="pac-meta">
-            <span className="pac-proj">
-              PROJ{" "}
-              <strong className="green">${selectedPlayer.projValue}</strong>
-            </span>
-            <span className="pac-adp">
-              ADP <strong>${selectedPlayer.adp}</strong>
-            </span>
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div className="pac-notes-label">PLAYER NOTES</div>
-        {/* PLACEHOLDER: Wire notes to WatchlistEntry.notes from MongoDB */}
-        <textarea
-          className="pac-notes"
-          defaultValue={selectedPlayer.notes}
-          rows={3}
-        />
-
-        {/* Performance snapshot */}
-        <div className="pac-snapshot-header">
-          <span className="pac-section-label">PERFORMANCE SNAPSHOT</span>
-          <div className="stat-view-toggle">
-            <button
-              className={"svt-btn " + (statView === "hitting" ? "active" : "")}
-              onClick={() => setStatView("hitting")}
-            >
-              Hitting
-            </button>
-            <button
-              className={"svt-btn " + (statView === "pitching" ? "active" : "")}
-              onClick={() => setStatView("pitching")}
-            >
-              Pitching
-            </button>
-          </div>
-        </div>
-
-        {statView === "pitching" ? (
-          <div className="pac-stat-boxes">
-            <div className="stat-box">
-              <div className="sb-label">ERA</div>
-              <div className="sb-val">{selectedPlayer.stats.era}</div>
-            </div>
-            <div className="stat-box">
-              <div className="sb-label">K/9</div>
-              <div className="sb-val">{selectedPlayer.stats.k9}</div>
-            </div>
-            <div className="stat-box">
-              <div className="sb-label">WHIP</div>
-              <div className="sb-val">{selectedPlayer.stats.whip}</div>
-            </div>
-            <div className="stat-box">
-              <div className="sb-label">IP</div>
-              <div className="sb-val">{selectedPlayer.stats.ip}</div>
-            </div>
-          </div>
-        ) : (
-          <div className="pac-stat-boxes">
-            {/* PLACEHOLDER: Replace with real batting stats */}
-            <div className="stat-box">
-              <div className="sb-label">AVG</div>
-              <div className="sb-val">.---</div>
-            </div>
-            <div className="stat-box">
-              <div className="sb-label">HR</div>
-              <div className="sb-val">--</div>
-            </div>
-            <div className="stat-box">
-              <div className="sb-label">RBI</div>
-              <div className="sb-val">--</div>
-            </div>
-            <div className="stat-box">
-              <div className="sb-label">SB</div>
-              <div className="sb-val">--</div>
-            </div>
-          </div>
-        )}
-
-        {/* Category impact */}
-        <div className="pac-section-label" style={{ marginTop: "1rem" }}>
-          CATEGORY IMPACT
-        </div>
-        <table className="category-impact-table">
-          <thead>
-            <tr>
-              <th>CAT</th>
-              <th>TEAM PACE</th>
-              <th>WITH PLAYER</th>
-              <th>DELTA</th>
-            </tr>
-          </thead>
-          <tbody>
-            {/* PLACEHOLDER: Replace with real category impact calculated from team roster + player stats */}
-            {selectedPlayer.categoryImpact.map((row) => (
-              <tr key={row.cat}>
-                <td className="ci-cat">{row.cat}</td>
-                <td>{row.teamPace}</td>
-                <td>{row.withPlayer}</td>
-                <td>
-                  <DeltaBadge delta={row.delta} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Live price */}
-        <div className="pac-section-label" style={{ marginTop: "1rem" }}>
-          LIVE PRICE
-        </div>
-        <div className="live-price-row">
-          <div className="lp-block">
-            <div className="lp-label">CURRENT HIGH BID</div>
-            {/* PLACEHOLDER: Replace with real-time bid from Socket.io */}
-            <div className="lp-val bid">$—</div>
-          </div>
-          <div className="lp-block">
-            <div className="lp-label">MARKET AVG</div>
-            <div className="lp-val">${selectedPlayer.marketAvg}</div>
-          </div>
-          <div className="lp-block">
-            <div className="lp-label">TARGET RANGE</div>
-            <div className="lp-val green">
-              ${selectedPlayer.targetRange.low}–$
-              {selectedPlayer.targetRange.high}
-            </div>
-          </div>
-        </div>
-
-        <div className="bid-row">
-          {/* PLACEHOLDER: Wire to Socket.io bid submission */}
-          <input
-            type="text"
-            className="bid-input"
-            placeholder="$ Current price..."
-            value={currentBid}
-            onChange={(e) => setCurrentBid(e.target.value)}
-          />
-          <button className="bid-star-btn">☆</button>
-        </div>
-
-        {/* Log result */}
-        <div className="pac-section-label" style={{ marginTop: "1rem" }}>
-          LOG RESULT
-        </div>
-        <div className="log-result-grid">
-          <div className="log-field">
-            <label className="log-label">WON BY</label>
-            {/* PLACEHOLDER: Replace options with real league team names */}
-            <select
-              className="log-select"
-              value={wonBy}
-              onChange={(e) => setWonBy(e.target.value)}
-            >
-              {PLACEHOLDER_TEAMS.map((t) => (
-                <option key={t.name}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="log-field">
-            <label className="log-label">FINAL PRICE</label>
-            <div className="log-price-input-wrap">
-              <span className="log-dollar">$</span>
-              {/* PLACEHOLDER: Wire to socket/backend to record DraftPick in MongoDB */}
-              <input
-                type="text"
-                className="log-price-input"
-                value={finalPrice}
-                onChange={(e) => setFinalPrice(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="log-slot-field">
-          <label className="log-label">DRAFTED TO SLOT</label>
-          <select
-            className="log-select full"
-            value={draftedToSlot}
-            onChange={(e) => setDraftedToSlot(e.target.value)}
-          >
-            {[
-              "SP",
-              "RP",
-              "C",
-              "1B",
-              "2B",
-              "SS",
-              "3B",
-              "OF",
-              "UTIL",
-              "Bench",
-            ].map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-
-        <button className="log-result-btn">Log Result</button>
-
-        <div className="pac-nav-arrows">
-          <button className="pac-arrow">‹</button>
-          <button className="pac-arrow">›</button>
-        </div>
-      </div>
-
-      {/* Alerts overlay */}
-      {showAlerts && (
-        <div className="alerts-overlay">
-          <div className="alerts-panel">
-            <div className="alerts-header">
-              <span className="alerts-title">Intelligence Alerts</span>
+            {selectedPlayer && (
               <button
-                className="alerts-close"
-                onClick={() => setShowAlerts(false)}
+                className="cc-clear-btn"
+                onClick={() => {
+                  setSelectedPlayer(null);
+                  setSearchQuery("");
+                }}
               >
                 ✕
               </button>
-            </div>
-            <div className="alerts-tabs">
-              {["All Alerts", "External Baseball", "Structural Signals"].map(
-                (t) => (
-                  <button
-                    key={t}
-                    className={"alert-tab " + (alertTab === t ? "active" : "")}
-                    onClick={() => setAlertTab(t)}
-                  >
-                    {t}
-                  </button>
-                ),
-              )}
-            </div>
-            <div className="alerts-list">
-              {/* PLACEHOLDER: Replace with real alerts from AI/news service */}
-              {PLACEHOLDER_ALERTS.map((a) => (
-                <div key={a.id} className={"alert-item alert-" + a.type}>
-                  <div className="alert-icon">{a.icon}</div>
-                  <div className="alert-body">
-                    <div className="alert-title-text">{a.title}</div>
-                    <div className="alert-desc">{a.body}</div>
-                    <div className="alert-link">{a.link}</div>
-                  </div>
-                  <div className="alert-time">{a.time}</div>
-                </div>
-              ))}
+            )}
+            <div className="cc-undo-redo">
+              <button
+                className="cc-ur-btn"
+                title="Undo last pick"
+                disabled={rosterEntries.length === 0}
+                onClick={() => void handleUndo()}
+              >
+                ↩
+              </button>
+              <button
+                className="cc-ur-btn"
+                title="Redo last pick"
+                disabled={redoStack.length === 0}
+                onClick={() => void handleRedo()}
+              >
+                ↪
+              </button>
             </div>
           </div>
+          {showDropdown && dropdownResults.length > 0 && (
+            <div className="cc-search-dropdown">
+              {dropdownResults.map((p) => (
+                <button
+                  key={p.id}
+                  className="cc-dropdown-item"
+                  onMouseDown={() => handleSelectPlayer(p)}
+                >
+                  <span className="cc-dd-pos">{p.position}</span>
+                  <span className="cc-dd-name">
+                    {p.name}
+                    {isInWatchlist(p.id) && (
+                      <span className="cc-dd-wl" title="On your watchlist">
+                        ★
+                      </span>
+                    )}
+                  </span>
+                  <span className="cc-dd-team">{p.team}</span>
+                  <span className="cc-dd-val">${p.value}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!selectedPlayer ? (
+        <div className="cc-empty-state">
+          <div className="cc-empty-icon">⊕</div>
+          <div className="cc-empty-title">No player loaded</div>
+          <div className="cc-empty-sub">
+            Search for a player above to begin the auction
+          </div>
+        </div>
+      ) : (
+        <div className="player-auction-card">
+          <div className="pac-header">
+            <span className="pac-pos-chip">{selectedPlayer.position}</span>
+            <span className="pac-team-chip">{selectedPlayer.team}</span>
+            <span className="pac-rank-chip">Tier {selectedPlayer.tier}</span>
+            <div className="pac-name-row">
+              <h1 className="pac-name">
+                {selectedPlayer.name}
+                {isInWatchlist(selectedPlayer.id) && (
+                  <span className="pac-wl-badge" title="On your watchlist">
+                    ★
+                  </span>
+                )}
+              </h1>
+              <img
+                src={selectedPlayer.headshot}
+                alt={selectedPlayer.name}
+                className="pac-headshot"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+            <div className="pac-meta">
+              <span className="pac-proj">
+                PROJ <strong className="green">${selectedPlayer.value}</strong>
+              </span>
+              <span className="pac-adp">
+                ADP <strong>{selectedPlayer.adp}</strong>
+              </span>
+            </div>
+          </div>
+
+          <>
+            <div className="pac-notes-label">PLAYER NOTES</div>
+            <textarea
+              className="pac-notes"
+              value={
+                playerNotes.get(selectedPlayer.id) ??
+                selectedPlayer.outlook ??
+                ""
+              }
+              onChange={(e) => {
+                const val = e.target.value;
+                setPlayerNotes((prev) => {
+                  const next = new Map(prev);
+                  next.set(selectedPlayer.id, val);
+                  return next;
+                });
+              }}
+              placeholder="Add scouting notes..."
+              rows={2}
+            />
+          </>
+
+          {/* Performance snapshot */}
+          <div className="pac-snapshot-header">
+            <span className="pac-section-label">PERFORMANCE SNAPSHOT</span>
+            <div className="stat-view-toggle">
+              <button
+                className={
+                  "svt-btn " + (statView === "hitting" ? "active" : "")
+                }
+                onClick={() => setStatView("hitting")}
+              >
+                Hitting
+              </button>
+              <button
+                className={
+                  "svt-btn " + (statView === "pitching" ? "active" : "")
+                }
+                onClick={() => setStatView("pitching")}
+              >
+                Pitching
+              </button>
+            </div>
+          </div>
+
+          {statView === "pitching" ? (
+            <div className="pac-stat-boxes">
+              <div className="stat-box">
+                <div className="sb-label">ERA</div>
+                <div className="sb-val">{sp?.era ?? "--"}</div>
+              </div>
+              <div className="stat-box">
+                <div className="sb-label">K/9</div>
+                <div className="sb-val">{k9}</div>
+              </div>
+              <div className="stat-box">
+                <div className="sb-label">WHIP</div>
+                <div className="sb-val">{sp?.whip ?? "--"}</div>
+              </div>
+              <div className="stat-box">
+                <div className="sb-label">W</div>
+                <div className="sb-val">{sp?.wins ?? "--"}</div>
+              </div>
+              <div className="stat-box">
+                <div className="sb-label">SV</div>
+                <div className="sb-val">{sp?.saves ?? "--"}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="pac-stat-boxes">
+              <div className="stat-box">
+                <div className="sb-label">AVG</div>
+                <div className="sb-val">{sb?.avg ?? ".---"}</div>
+              </div>
+              <div className="stat-box">
+                <div className="sb-label">HR</div>
+                <div className="sb-val">{sb?.hr ?? "--"}</div>
+              </div>
+              <div className="stat-box">
+                <div className="sb-label">RBI</div>
+                <div className="sb-val">{sb?.rbi ?? "--"}</div>
+              </div>
+              <div className="stat-box">
+                <div className="sb-label">R</div>
+                <div className="sb-val">{sb?.runs ?? "--"}</div>
+              </div>
+              <div className="stat-box">
+                <div className="sb-label">SB</div>
+                <div className="sb-val">{sb?.sb ?? "--"}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Category impact */}
+          {catImpactRows.length > 0 && (
+            <>
+              <div
+                className="pac-section-label"
+                style={{ marginTop: "1rem", marginBottom: "0.5rem" }}
+              >
+                CATEGORY IMPACT
+              </div>
+              <table className="category-impact-table">
+                <thead>
+                  <tr>
+                    <th>CAT</th>
+                    <th>TEAM PACE</th>
+                    <th>WITH PLAYER</th>
+                    <th>DELTA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {catImpactRows.map((row) => (
+                    <tr key={row.name}>
+                      <td className="ci-cat">{row.name}</td>
+                      <td>{row.teamPaceStr}</td>
+                      <td>{row.withPlayerStr}</td>
+                      <td>
+                        <span
+                          className={`delta-badge ${row.improved ? "green" : "red"}`}
+                        >
+                          {row.deltaStr}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          {/* Live price */}
+          <div className="pac-section-label" style={{ marginTop: "1rem" }}>
+            LIVE PRICE
+          </div>
+          <div className="live-price-row">
+            <div className="lp-block">
+              <div className="lp-label">CURRENT HIGH BID</div>
+              <div className="lp-val bid">
+                {currentBid ? `$${currentBid}` : "$—"}
+              </div>
+            </div>
+            <div className="lp-block">
+              <div className="lp-label">MARKET AVG</div>
+              <div className="lp-val">${marketAvg}</div>
+            </div>
+            <div className="lp-block">
+              <div className="lp-label">TARGET RANGE</div>
+              <div className="lp-val green">
+                ${targetLow}–${targetHigh}
+              </div>
+            </div>
+          </div>
+
+          <div className="bid-row">
+            <input
+              type="text"
+              className="bid-input"
+              placeholder="$ Current price..."
+              value={currentBid}
+              onChange={(e) => setCurrentBid(e.target.value)}
+            />
+            <button className="bid-star-btn">☆</button>
+          </div>
+
+          {/* Log result */}
+          <div className="pac-section-label" style={{ marginTop: "1rem" }}>
+            LOG RESULT
+          </div>
+          <div className="log-result-grid">
+            <div className="log-field">
+              <label className="log-label">WON BY</label>
+              <select
+                className="log-select"
+                value={wonBy}
+                onChange={(e) => setWonBy(e.target.value)}
+              >
+                {teamNames.map((name) => (
+                  <option key={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="log-field">
+              <label className="log-label">FINAL PRICE</label>
+              <div className="log-price-input-wrap">
+                <span className="log-dollar">$</span>
+                <input
+                  type="text"
+                  className="log-price-input"
+                  value={finalPrice}
+                  onChange={(e) => setFinalPrice(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="log-field">
+              <label className="log-label">DRAFTED TO SLOT</label>
+              <select
+                className="log-select"
+                value={draftedToSlot}
+                onChange={(e) => setDraftedToSlot(e.target.value)}
+              >
+                {slotOptions.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button
+            className="log-result-btn"
+            onClick={() => void handleLogResult()}
+            disabled={submitting || !wonBy || !finalPrice}
+          >
+            {submitting ? "Logging…" : "Log Result"}
+          </button>
         </div>
       )}
 
-      {/* Alerts bell button — floats over center panel */}
-      <button
-        className="alerts-bell-btn"
-        onClick={() => setShowAlerts((v) => !v)}
-      >
-        🔔 <span className="bell-badge">{PLACEHOLDER_ALERTS.length}</span>
-      </button>
+      {toast && (
+        <div className={`cc-toast cc-toast-${toast.type}`}>{toast.message}</div>
+      )}
     </div>
   );
 }
 
-function RightPanel() {
+function RightPanel({
+  league,
+  teamData,
+  myTeamName,
+  myTeamEntries,
+  allPlayers,
+  rosterEntries,
+}: {
+  league: League | null;
+  teamData: TeamSummary[];
+  myTeamName: string;
+  myTeamEntries: RosterEntry[];
+  allPlayers: Player[];
+  rosterEntries: RosterEntry[];
+}) {
+  const my = teamData.find((t) => t.name === myTeamName);
+  const totalSlots = league
+    ? Object.values(league.rosterSlots).reduce((a, b) => a + b, 0)
+    : 0;
+
+  const budgetRemaining = my?.remaining ?? league?.budget ?? 260;
+  const openSpots = my?.open ?? totalSlots;
+  const maxBid = my?.maxBid ?? Math.max(1, budgetRemaining - (openSpots - 1));
+  const ppSpot = my?.ppSpot ?? 0;
+
+  const hittingCats = (league?.scoringCategories ?? []).filter(
+    (c) => c.type === "batting",
+  );
+  const pitchingCats = (league?.scoringCategories ?? []).filter(
+    (c) => c.type === "pitching",
+  );
+
+  // Position budget plan
+  const posBudgetPlan = league
+    ? Object.entries(league.rosterSlots).map(([pos, count]) => {
+        const entriesAtSlot = myTeamEntries.filter((e) => e.rosterSlot === pos);
+        const spent = entriesAtSlot.reduce((s, e) => s + e.price, 0);
+        const filled = entriesAtSlot.length;
+        const open = Math.max(0, count - filled);
+        const target = Math.round(
+          (count / totalSlots) * (league.budget ?? 260),
+        );
+        const delta = target - spent;
+        return { pos, open, target, spent, delta };
+      })
+    : [];
+
+  // Category pace percentages
+  const numTeams = league?.teamNames?.length ?? 1;
+  const allCats = [...hittingCats, ...pitchingCats];
+  const catPace: Record<string, number> = {};
+  for (const cat of allCats) {
+    const isRate = ["ERA", "WHIP"].includes(cat.name.toUpperCase());
+    const getVal = (entry: RosterEntry) => {
+      const p = allPlayers.find((a) => a.id === entry.externalPlayerId);
+      return p ? getStatByCategory(p, cat.name, cat.type) : 0;
+    };
+    if (isRate) {
+      const myVals = myTeamEntries.map(getVal).filter((v) => v > 0);
+      const allVals = rosterEntries.map(getVal).filter((v) => v > 0);
+      const myAvg = myVals.length
+        ? myVals.reduce((a, b) => a + b, 0) / myVals.length
+        : 0;
+      const allAvg = allVals.length
+        ? allVals.reduce((a, b) => a + b, 0) / allVals.length
+        : 0;
+      catPace[cat.name] =
+        allAvg > 0 && myAvg > 0 ? Math.round((allAvg / myAvg) * 100) : 0;
+    } else {
+      const myTotal = myTeamEntries.reduce((s, e) => s + getVal(e), 0);
+      const allTotal = rosterEntries.reduce((s, e) => s + getVal(e), 0);
+      const avgTotal = numTeams > 0 ? allTotal / numTeams : 0;
+      catPace[cat.name] =
+        avgTotal > 0 ? Math.round((myTotal / avgTotal) * 100) : 0;
+    }
+  }
+
   return (
     <div className="cc-right">
-      {/* Budget summary */}
       <div className="rp-section-label">YOUR BUDGET</div>
       <div className="budget-grid">
-        {/* PLACEHOLDER: Replace with real user budget from league/user context */}
         <div className="budget-card">
           <div className="bc-label">BUDGET REMAINING</div>
-          <div className="bc-val green">$260</div>
+          <div className="bc-val green">${budgetRemaining}</div>
         </div>
         <div className="budget-card">
           <div className="bc-label">OPEN SPOTS</div>
-          <div className="bc-val">17</div>
+          <div className="bc-val">{openSpots}</div>
         </div>
         <div className="budget-card">
           <div className="bc-label">MAX BID</div>
-          <div className="bc-val green">$244</div>
+          <div className="bc-val green">${maxBid}</div>
         </div>
         <div className="budget-card">
           <div className="bc-label">$ PER SPOT</div>
-          <div className="bc-val">$15.3</div>
+          <div className="bc-val">${ppSpot}</div>
         </div>
       </div>
-      {/* PLACEHOLDER: Replace filled/spent with real roster data */}
       <div className="budget-progress-row">
-        <span className="bp-text">0/17 filled</span>
-        <span className="bp-text">$0 spent</span>
+        <span className="bp-text">
+          {my ? `${my.filled}/${totalSlots} filled` : `0/${totalSlots} filled`}
+        </span>
+        <span className="bp-text">${my?.spent ?? 0} spent</span>
       </div>
 
       <div className="cc-divider" />
 
-      {/* Position budget plan */}
       <div className="rp-section-label">POSITION BUDGET PLAN</div>
       <table className="pos-budget-table">
         <thead>
@@ -694,45 +1251,84 @@ function RightPanel() {
           </tr>
         </thead>
         <tbody>
-          {PLACEHOLDER_POSITION_BUDGET.map((p) => (
-            <tr key={p.pos}>
-              <td className="pb-pos">{p.pos}</td>
-              <td className={p.open > 0 ? "green" : "dim"}>{p.open}</td>
-              <td>${p.target}</td>
-              <td>${p.spent}</td>
-              <td>
-                <DeltaBadge delta={p.delta} />
+          {posBudgetPlan.map(({ pos, open, target, spent, delta }) => (
+            <tr key={pos}>
+              <td className="pb-pos">{pos}</td>
+              <td>{open}</td>
+              <td>${target}</td>
+              <td>${spent}</td>
+              <td className={delta >= 0 ? "green" : "red"}>
+                {delta >= 0 ? `+${delta}` : delta}
               </td>
             </tr>
           ))}
+          {posBudgetPlan.length === 0 && (
+            <tr>
+              <td
+                colSpan={5}
+                className="dim"
+                style={{ textAlign: "center", padding: "0.5rem 0" }}
+              >
+                —
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
 
       <div className="cc-divider" />
 
-      {/* Category pace */}
       <div className="rp-section-label">CATEGORY PACE</div>
       <div className="cat-pace-section">
-        <div className="cat-pace-group-label">HITTING</div>
-        <div className="cat-pace-row">
-          {PLACEHOLDER_CATEGORY_PACE.hitting.map((c) => (
-            <div key={c.cat} className="cat-pace-item">
-              <div className="cp-label">{c.cat}</div>
-              <PaceBadge pct={c.pct} />
+        {hittingCats.length > 0 && (
+          <>
+            <div className="cat-pace-group-label">HITTING</div>
+            <div className="cat-pace-row">
+              {hittingCats.map((c) => {
+                const pct = catPace[c.name] ?? 0;
+                const color =
+                  pct >= 95 ? "green" : pct >= 75 ? "yellow" : "red";
+                return (
+                  <div key={c.name} className="cat-pace-item">
+                    <div className="cp-label">{c.name}</div>
+                    {pct > 0 && <div className={`cp-pct ${color}`}>{pct}%</div>}
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-        <div className="cat-pace-group-label" style={{ marginTop: "0.6rem" }}>
-          PITCHING
-        </div>
-        <div className="cat-pace-row">
-          {PLACEHOLDER_CATEGORY_PACE.pitching.map((c) => (
-            <div key={c.cat} className="cat-pace-item">
-              <div className="cp-label">{c.cat}</div>
-              <PaceBadge pct={c.pct} />
+          </>
+        )}
+        {pitchingCats.length > 0 && (
+          <>
+            <div
+              className="cat-pace-group-label"
+              style={{ marginTop: "0.6rem" }}
+            >
+              PITCHING
             </div>
-          ))}
-        </div>
+            <div className="cat-pace-row">
+              {pitchingCats.map((c) => {
+                const pct = catPace[c.name] ?? 0;
+                const color =
+                  pct >= 95 ? "green" : pct >= 75 ? "yellow" : "red";
+                return (
+                  <div key={c.name} className="cat-pace-item">
+                    <div className="cp-label">{c.name}</div>
+                    {pct > 0 && <div className={`cp-pct ${color}`}>{pct}%</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+        {hittingCats.length === 0 && pitchingCats.length === 0 && (
+          <div
+            className="dim"
+            style={{ fontSize: "0.72rem", padding: "0.5rem 0" }}
+          >
+            Scoring categories not configured
+          </div>
+        )}
       </div>
     </div>
   );
@@ -744,14 +1340,77 @@ function RightPanel() {
 
 export default function CommandCenter() {
   usePageTitle("Command Center");
+  const { id: leagueId } = useParams<{ id: string }>();
+  const { league } = useLeague();
+  const { token, user } = useAuth();
   const [activeTab, setActiveTab] = useState("Market");
+  const [rosterEntries, setRosterEntries] = useState<RosterEntry[]>([]);
+  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+
+  const refreshRoster = () => {
+    if (!leagueId || !token) return;
+    void getRoster(leagueId, token).then(setRosterEntries).catch(console.error);
+  };
+
+  useEffect(() => {
+    if (!leagueId || !token) return;
+    void getRoster(leagueId, token).then(setRosterEntries).catch(console.error);
+  }, [leagueId, token]);
+
+  useEffect(() => {
+    void getPlayers("adp").then(setAllPlayers).catch(console.error);
+  }, []);
+
+  const draftedIds = useMemo(
+    () => new Set(rosterEntries.map((e) => e.externalPlayerId)),
+    [rosterEntries],
+  );
+
+  const teamData = useMemo(
+    () => (league ? computeTeamData(league, rosterEntries) : []),
+    [league, rosterEntries],
+  );
+
+  const myTeamName = (() => {
+    if (!league || !user?.id) return "";
+    const idx = league.memberIds.indexOf(user.id);
+    return idx !== -1 ? (league.teamNames[idx] ?? "") : "";
+  })();
+
+  const myTeamEntries = rosterEntries.filter((e) => e.userId === user?.id);
 
   return (
     <div className="cc-page">
       <div className="cc-layout">
-        <LeftPanel activeTab={activeTab} setActiveTab={setActiveTab} />
-        <AuctionCenter />
-        <RightPanel />
+        <LeftPanel
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          league={league}
+          teamData={teamData}
+          myTeamName={myTeamName}
+          selectedPlayerPosition={selectedPlayer?.position ?? null}
+          allPlayers={allPlayers}
+          draftedIds={draftedIds}
+          rosterEntries={rosterEntries}
+        />
+        <AuctionCenter
+          rosterEntries={rosterEntries}
+          refreshRoster={refreshRoster}
+          allPlayers={allPlayers}
+          selectedPlayer={selectedPlayer}
+          setSelectedPlayer={setSelectedPlayer}
+          draftedIds={draftedIds}
+          myTeamEntries={myTeamEntries}
+        />
+        <RightPanel
+          league={league}
+          teamData={teamData}
+          myTeamName={myTeamName}
+          myTeamEntries={myTeamEntries}
+          allPlayers={allPlayers}
+          rosterEntries={rosterEntries}
+        />
       </div>
     </div>
   );
