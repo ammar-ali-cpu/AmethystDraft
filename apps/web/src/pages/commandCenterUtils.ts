@@ -146,6 +146,48 @@ export function computePositionMarket(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Team eligibility helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function getEligibleSlots(pos: string, slots: string[]): string[] {
+  const pos_ = pos.toUpperCase();
+  return slots.filter((slot) => {
+    const s = slot.toUpperCase();
+    if (s === pos_) return true;
+    if (s === "UTIL") return true;
+    if (s === "BN" || s === "BENCH") return true;
+    if (s === "MI") return ["SS", "2B"].includes(pos_);
+    if (s === "CI") return ["1B", "3B"].includes(pos_);
+    if (s === "OF") return ["OF", "LF", "CF", "RF"].includes(pos_);
+    if (s === "P") return ["SP", "RP"].includes(pos_);
+    return false;
+  });
+}
+
+export function teamCanBid(
+  teamName: string,
+  position: string | null,
+  league: League,
+  rosterEntries: RosterEntry[],
+): boolean {
+  if (!position) return true;
+  const allSlots = Object.keys(league.rosterSlots);
+  const eligible = getEligibleSlots(position, allSlots);
+  if (eligible.length === 0) return false;
+  const teamIdx = league.teamNames.indexOf(teamName);
+  if (teamIdx === -1) return false;
+  const teamId = `team_${teamIdx + 1}`;
+  const teamRoster = rosterEntries.filter((e) => e.teamId === teamId);
+  const filled = new Map<string, number>();
+  teamRoster.forEach((e) => {
+    filled.set(e.rosterSlot, (filled.get(e.rosterSlot) ?? 0) + 1);
+  });
+  return eligible.some(
+    (s) => (filled.get(s) ?? 0) < (league.rosterSlots[s] ?? 1),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Projected standings
 // ─────────────────────────────────────────────────────────────────────────────
 

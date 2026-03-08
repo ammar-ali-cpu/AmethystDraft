@@ -23,6 +23,7 @@ import {
   computeRanks,
   rankColor,
   formatStatCell,
+  teamCanBid,
 } from "./commandCenterUtils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -166,6 +167,31 @@ function LeftPanel({
   const [sortCat, setSortCat] = useState<string>("HR");
   const [sortAsc, setSortAsc] = useState(false);
 
+  type LiqCol = "name" | "remaining" | "open" | "maxBid" | "ppSpot";
+  const [liqSort, setLiqSort] = useState<{ col: LiqCol; dir: "asc" | "desc" }>({
+    col: "maxBid",
+    dir: "desc",
+  });
+  const toggleLiqSort = (col: LiqCol) =>
+    setLiqSort((prev) =>
+      prev.col === col
+        ? { col, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { col, dir: col === "name" ? "asc" : "desc" },
+    );
+
+  const sortedTeamData = useMemo(() => {
+    const { col, dir } = liqSort;
+    return [...teamData].sort((a, b) => {
+      const av = col === "name" ? a.name : a[col];
+      const bv = col === "name" ? b.name : b[col];
+      const diff =
+        typeof av === "string"
+          ? av.localeCompare(bv as string)
+          : (av as number) - (bv as number);
+      return dir === "asc" ? diff : -diff;
+    });
+  }, [teamData, liqSort]);
+
   const projectedStandings = useMemo(
     () =>
       buildProjectedStandings(
@@ -289,27 +315,64 @@ function LeftPanel({
           <table className="liquidity-table">
             <thead>
               <tr>
-                <th>TEAM</th>
-                <th>$ LEFT</th>
-                <th>OPEN</th>
-                <th>MAX BID ↓</th>
-                <th>$/SPOT</th>
+                {(
+                  [
+                    ["name", "TEAM"],
+                    ["remaining", "$ LEFT"],
+                    ["open", "OPEN"],
+                    ["maxBid", "MAX BID"],
+                    ["ppSpot", "$/SPOT"],
+                  ] as [LiqCol, string][]
+                ).map(([col, label]) => (
+                  <th
+                    key={col}
+                    className="liq-th-sortable"
+                    onClick={() => toggleLiqSort(col)}
+                  >
+                    {label}
+                    {liqSort.col === col ? (
+                      <span className="th-sort-icon th-sort-active">
+                        {liqSort.dir === "asc" ? "▲" : "▼"}
+                      </span>
+                    ) : (
+                      <span className="th-sort-icon th-sort-idle">↕</span>
+                    )}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {teamData.length > 0 ? (
-                teamData.map((t) => (
-                  <tr
-                    key={t.name}
-                    className={t.name === myTeamName ? "my-team-row" : ""}
-                  >
-                    <td className="team-name-cell">{t.name}</td>
-                    <td>${t.remaining}</td>
-                    <td>{t.open}</td>
-                    <td className="green">${t.maxBid}</td>
-                    <td>${t.ppSpot}</td>
-                  </tr>
-                ))
+              {sortedTeamData.length > 0 ? (
+                sortedTeamData.map((t) => {
+                  const ineligible =
+                    !!selectedPlayerPosition &&
+                    !!league &&
+                    !teamCanBid(
+                      t.name,
+                      selectedPlayerPosition,
+                      league,
+                      rosterEntries,
+                    );
+                  return (
+                    <tr
+                      key={t.name}
+                      className={[
+                        t.name === myTeamName ? "my-team-row" : "",
+                        ineligible ? "liq-ineligible" : "",
+                      ]
+                        .join(" ")
+                        .trim()}
+                    >
+                      <td className="liq-team-name-cell" title={t.name}>
+                        {t.name}
+                      </td>
+                      <td>${t.remaining}</td>
+                      <td>{t.open}</td>
+                      <td className={ineligible ? "" : "green"}>${t.maxBid}</td>
+                      <td>${t.ppSpot}</td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td
