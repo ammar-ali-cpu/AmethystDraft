@@ -207,6 +207,7 @@ const addRosterEntry: RequestHandler = async (
       price,
       rosterSlot,
       userId,
+      teamId: bodyTeamId,
       isKeeper,
     } = req.body;
     const memberIds = league.memberIds.map(String);
@@ -221,7 +222,13 @@ const addRosterEntry: RequestHandler = async (
     const resolvedUserId =
       userId && isCommissioner ? String(userId) : requesterId;
     const teamIndex = memberIds.indexOf(resolvedUserId);
-    const teamId = teamIndex >= 0 ? `team_${teamIndex + 1}` : `team_1`;
+    // Commissioner may pass teamId explicitly for unjoined team slots
+    const teamId =
+      bodyTeamId && isCommissioner
+        ? String(bodyTeamId)
+        : teamIndex >= 0
+          ? `team_${teamIndex + 1}`
+          : `team_1`;
     const entry = await RosterEntry.create({
       leagueId: String(req.params.id),
       userId: resolvedUserId,

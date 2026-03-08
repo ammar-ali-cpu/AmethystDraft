@@ -25,6 +25,7 @@ export interface RosterEntryPayload {
   rosterSlot: string;
   isKeeper?: boolean;
   userId?: string;
+  teamId?: string;
 }
 
 function authHeaders(token: string): Record<string, string> {

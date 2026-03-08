@@ -142,9 +142,7 @@ export function DraftLogRow({
           </div>
           <div className="dl-row-bottom">
             <span className="dl-fantasy-team">{teamName}</span>
-            <span className="dl-sep">·</span>
             <span className="dl-slot">{entry.rosterSlot}</span>
-            <span className="dl-sep">·</span>
             <span className="dl-price">${entry.price}</span>
           </div>
         </div>

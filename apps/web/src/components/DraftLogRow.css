@@ -81,20 +81,13 @@
   flex-shrink: 0;
 }
 
-.dl-sep {
-  color: #3a2e50;
-  font-size: 0.6rem;
-  flex-shrink: 0;
-}
-
 .dl-fantasy-team {
   color: #6b4fa0;
   font-size: 0.62rem;
-  flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 90px;
+  min-width: 0;
 }
 
 .dl-slot {
