@@ -1,7 +1,6 @@
 import type { Player } from "../types/player";
 
-const API_BASE =
-  import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 interface PlayersResponse {
   players: Player[];

@@ -29,6 +29,14 @@ export interface EngineValuationContext {
   drafted_players: EngineDraftedPlayer[];
 }
 
+export interface EngineScarcityContext {
+  drafted_players: EngineDraftedPlayer[];
+  scoring_categories: EngineScoringCategory[];
+  num_teams: number;
+  league_scope: "Mixed" | "AL" | "NL";
+  position?: string;
+}
+
 export interface EngineTeamState {
   team_id: string;
   budget_remaining: number;
@@ -110,6 +118,24 @@ export function buildSimulationContext(
     league_scope: league.playerPool,
     teams,
     ...(availablePlayerIds ? { available_player_ids: availablePlayerIds } : {}),
+  };
+}
+
+/**
+ * Builds the context for /analysis/scarcity.
+ * Optionally filter to a single position.
+ */
+export function buildScarcityContext(
+  league: ILeague,
+  rosterEntries: IRosterEntry[],
+  position?: string,
+): EngineScarcityContext {
+  return {
+    drafted_players: toDraftedPlayers(rosterEntries),
+    scoring_categories: league.scoringCategories,
+    num_teams: league.teams,
+    league_scope: league.playerPool,
+    ...(position ? { position } : {}),
   };
 }
 
