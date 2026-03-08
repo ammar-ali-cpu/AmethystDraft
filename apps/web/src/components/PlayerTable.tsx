@@ -19,6 +19,7 @@ interface PlayerTableProps {
   getNote?: (playerId: string) => string;
   onNoteChange?: (playerId: string, note: string) => void;
   draftedIds?: Set<string>;
+  draftedByTeam?: Map<string, string>;
 }
 
 type DisplayBatting = {
@@ -34,7 +35,9 @@ type DisplayPitching = {
   whip: string;
   wins: number;
   saves: number;
+  holds: number;
   strikeouts: number;
+  completeGames: number;
 };
 
 const POSITIONS = ["all", "OF", "SS", "1B", "2B", "3B", "C", "DH", "SP", "RP"];
@@ -111,7 +114,9 @@ function toDisplayPitching(
     whip: String(pitching.whip ?? "0.000"),
     wins: Number(pitching.wins ?? 0),
     saves: Number(pitching.saves ?? 0),
+    holds: Number(pitching.holds ?? 0),
     strikeouts: Number(pitching.strikeouts ?? 0),
+    completeGames: Number(pitching.completeGames ?? 0),
   };
 }
 
@@ -142,7 +147,9 @@ function applyDummyAdjustments(
             whip: formatRate(parseFloat(pit.whip) * 1.04),
             wins: clampNonNegative(pit.wins * 0.96),
             saves: clampNonNegative(pit.saves * 1.03),
+            holds: clampNonNegative(pit.holds * 1.03),
             strikeouts: clampNonNegative(pit.strikeouts * 1.02),
+            completeGames: clampNonNegative(pit.completeGames * 0.96),
           }
         : undefined,
     };
@@ -164,7 +171,9 @@ function applyDummyAdjustments(
           whip: formatRate(parseFloat(pit.whip) * 1.01),
           wins: clampNonNegative(pit.wins * 0.94),
           saves: clampNonNegative(pit.saves * 0.95),
+          holds: clampNonNegative(pit.holds * 0.95),
           strikeouts: clampNonNegative(pit.strikeouts * 0.95),
+          completeGames: clampNonNegative(pit.completeGames * 0.94),
         }
       : undefined,
   };
@@ -262,6 +271,15 @@ function getValDiff(player: Player): number {
 const DEFAULT_BAT_COLS = ["AVG", "HR", "RBI", "R", "SB"];
 const DEFAULT_PIT_COLS = ["ERA", "K", "W", "SV", "WHIP"];
 
+const PITCHER_POSITIONS = new Set(["SP", "RP", "P"]);
+function playerIsPitcher(p: Player): boolean {
+  const hasPit = !!(p.projection?.pitching ?? p.stats?.pitching);
+  const hasBat = !!(p.projection?.batting ?? p.stats?.batting);
+  if (hasPit && !hasBat) return true;
+  if (hasBat && !hasPit) return false;
+  return PITCHER_POSITIONS.has(p.position.toUpperCase());
+}
+
 function getDisplayStatValue(
   catName: string,
   catType: "batting" | "pitching",
@@ -308,6 +326,12 @@ function getDisplayStatValue(
       case "SV":
       case "SAVES":
         return String(pit?.saves ?? "-");
+      case "HLD":
+      case "HOLDS":
+        return String(pit?.holds ?? "-");
+      case "CG":
+      case "COMPLETE GAMES":
+        return String(pit?.completeGames ?? "-");
       case "IP":
         return player.stats?.pitching?.innings ?? "-";
       default:
@@ -345,6 +369,7 @@ export default function PlayerTable({
   getNote,
   onNoteChange,
   draftedIds,
+  draftedByTeam,
 }: PlayerTableProps) {
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
   const [starredOnly, setStarredOnly] = useState<boolean>(() => {
@@ -538,15 +563,6 @@ export default function PlayerTable({
 
   // Determine pitcher by stats presence (same heuristic as isBatter below),
   // falling back to position string so list works even with sparse data.
-  const PITCHER_POSITIONS = new Set(["SP", "RP", "P"]);
-  function playerIsPitcher(p: Player): boolean {
-    const hasPit = !!(p.projection?.pitching ?? p.stats?.pitching);
-    const hasBat = !!(p.projection?.batting ?? p.stats?.batting);
-    if (hasPit && !hasBat) return true;
-    if (hasBat && !hasPit) return false;
-    return PITCHER_POSITIONS.has(p.position.toUpperCase());
-  }
-
   const displayed = useMemo(() => {
     let base = starredOnly
       ? players.filter((p) => isInWatchlist(p.id))
@@ -762,6 +778,7 @@ export default function PlayerTable({
               onPositionChange("all");
               setSelectedTags(new Set());
               setAvailabilityFilter("all");
+              setStatView("all");
             }}
           >
             <RotateCcw size={14} />
@@ -867,10 +884,14 @@ export default function PlayerTable({
                       "pt-row" +
                       (isStarred ? " pt-row--starred" : "") +
                       (draftedIds?.has(player.id) ? " pt-row--drafted" : "") +
-                      (onPlayerClick ? " pt-row--clickable" : "")
+                      (onPlayerClick && !draftedIds?.has(player.id)
+                        ? " pt-row--clickable"
+                        : "")
                     }
                     onClick={
-                      onPlayerClick ? () => onPlayerClick(player) : undefined
+                      onPlayerClick && !draftedIds?.has(player.id)
+                        ? () => onPlayerClick(player)
+                        : undefined
                     }
                   >
                     <td className="td-rank">{index + 1}</td>
@@ -900,13 +921,19 @@ export default function PlayerTable({
                         />
                         <div className="player-name-col">
                           <span className="player-name">{player.name}</span>
-                          {tags.length > 0 && (
+                          {(tags.length > 0 ||
+                            draftedByTeam?.has(player.id)) && (
                             <div className="tag-list">
                               {tags.map((t) => (
                                 <span key={t} className="tag">
                                   {t}
                                 </span>
                               ))}
+                              {draftedByTeam?.get(player.id) && (
+                                <span className="tag pt-drafted-tag">
+                                  ▶ {draftedByTeam.get(player.id)}
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>

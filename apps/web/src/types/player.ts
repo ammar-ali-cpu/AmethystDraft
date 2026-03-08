@@ -24,8 +24,10 @@ export interface Player {
       whip: string;
       wins: number;
       saves: number;
+      holds: number;
       strikeouts: number;
       innings: string;
+      completeGames: number;
     };
   };
   projection: {
@@ -41,7 +43,9 @@ export interface Player {
       whip: string;
       wins: number;
       saves: number;
+      holds: number;
       strikeouts: number;
+      completeGames: number;
     };
   };
   outlook: string;

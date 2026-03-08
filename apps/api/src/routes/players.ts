@@ -153,8 +153,10 @@ interface PlayerData {
       whip: string;
       wins: number;
       saves: number;
+      holds: number;
       strikeouts: number;
       innings: string;
+      completeGames: number;
     };
   };
   projection: {
@@ -170,7 +172,9 @@ interface PlayerData {
       whip: string;
       wins: number;
       saves: number;
+      holds: number;
       strikeouts: number;
+      completeGames: number;
     };
   };
   outlook: string;
@@ -317,8 +321,10 @@ const getPlayers: RequestHandler = async (
               whip: String(stat.whip ?? "0.00"),
               wins: Number(stat.wins ?? 0),
               saves: Number(stat.saves ?? 0),
+              holds: Number(stat.holds ?? 0),
               strikeouts: Number(stat.strikeOuts ?? 0),
               innings: String(stat.inningsPitched ?? "0"),
+              completeGames: Number(stat.completeGames ?? 0),
             },
           },
           projection: {
@@ -327,7 +333,9 @@ const getPlayers: RequestHandler = async (
               whip: String(stat.whip ?? "0.00"),
               wins: Number(stat.wins ?? 0),
               saves: Number(stat.saves ?? 0),
+              holds: Number(stat.holds ?? 0),
               strikeouts: Number(stat.strikeOuts ?? 0),
+              completeGames: Number(stat.completeGames ?? 0),
             },
           },
           outlook: "",

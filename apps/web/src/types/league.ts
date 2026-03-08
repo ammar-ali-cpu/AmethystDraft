@@ -66,10 +66,8 @@ export const pitchingStats = [
   "Walks + Hits per IP (WHIP)",
   "Saves (SV)",
   "Holds (HLD)",
-  "Quality Starts (QS)",
   "Innings Pitched (IP)",
   "Complete Games (CG)",
-  "Wins + Quality Starts (W+QS)",
 ];
 
 export const keeperSlots = [

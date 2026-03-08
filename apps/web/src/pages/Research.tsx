@@ -5,7 +5,7 @@ import { Database, BarChart3, Layers } from "lucide-react";
 import PlayerTable from "../components/PlayerTable";
 import type { Player } from "../types/player";
 import { getPlayers, getPlayersCached } from "../api/players";
-import { getRoster } from "../api/roster";
+import { getRoster, type RosterEntry } from "../api/roster";
 import { useSelectedPlayer } from "../contexts/SelectedPlayerContext";
 import { useLeague } from "../contexts/LeagueContext";
 import { useAuth } from "../contexts/AuthContext";
@@ -50,13 +50,27 @@ export default function Research() {
     () => getPlayersCached("adp") === null,
   );
   const [playersError, setPlayersError] = useState("");
-  const [draftedIds, setDraftedIds] = useState<Set<string>>(new Set());
+  const [rosterEntries, setRosterEntries] = useState<RosterEntry[]>([]);
+  const draftedIds = useMemo(
+    () => new Set(rosterEntries.map((e) => e.externalPlayerId)),
+    [rosterEntries],
+  );
+  const draftedByTeam = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of rosterEntries) {
+      const idx = e.teamId
+        ? parseInt(e.teamId.replace("team_", ""), 10) - 1
+        : -1;
+      const name =
+        (idx >= 0 ? league?.teamNames[idx] : undefined) ?? e.teamId ?? "";
+      if (name) map.set(e.externalPlayerId, name);
+    }
+    return map;
+  }, [rosterEntries, league?.teamNames]);
 
   useEffect(() => {
     if (!leagueId || !token) return;
-    void getRoster(leagueId, token).then((entries) => {
-      setDraftedIds(new Set(entries.map((e) => e.externalPlayerId)));
-    });
+    void getRoster(leagueId, token).then(setRosterEntries);
   }, [leagueId, token]);
 
   useEffect(() => {
@@ -161,6 +175,7 @@ export default function Research() {
                   getNote={getNote}
                   onNoteChange={setNote}
                   draftedIds={draftedIds}
+                  draftedByTeam={draftedByTeam}
                 />
               )}
             </>
