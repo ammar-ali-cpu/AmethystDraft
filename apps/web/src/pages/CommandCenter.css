@@ -25,7 +25,25 @@
 .cc-right {
   overflow-y: auto;
   border-right: 1px solid rgba(139, 92, 246, 0.1);
+  scrollbar-width: thin;
+  scrollbar-color: #9070b8 rgba(15, 10, 25, 0.8);
 }
+
+.cc-left::-webkit-scrollbar,
+.cc-center::-webkit-scrollbar,
+.cc-right::-webkit-scrollbar { width: 6px; }
+
+.cc-left::-webkit-scrollbar-track,
+.cc-center::-webkit-scrollbar-track,
+.cc-right::-webkit-scrollbar-track { background: rgba(15, 10, 25, 0.8); }
+
+.cc-left::-webkit-scrollbar-thumb,
+.cc-center::-webkit-scrollbar-thumb,
+.cc-right::-webkit-scrollbar-thumb { background: #9070b8; border-radius: 3px; }
+
+.cc-left::-webkit-scrollbar-thumb:hover,
+.cc-center::-webkit-scrollbar-thumb:hover,
+.cc-right::-webkit-scrollbar-thumb:hover { background: #a855f7; }
 
 .cc-right {
   border-right: none;
@@ -201,6 +219,66 @@
 .team-name-cell { color: #d4c8e8; }
 .rank-cell { color: #6b4fa0; font-weight: 700; }
 .gb-cell { color: #6b4fa0; }
+
+.teams-table-row { cursor: pointer; }
+.teams-table-row:hover td { background: rgba(139, 92, 246, 0.05); }
+.teams-expand-icon { color: #4a3a60; text-align: right; width: 20px; }
+
+.teams-slots-row td { padding: 0; border-bottom: 1px solid rgba(139, 92, 246, 0.08); }
+.teams-slots-cell { padding: 0 !important; }
+.teams-slots-list {
+  padding: 0.4rem 0.5rem 0.5rem 0.5rem;
+  background: rgba(20, 10, 35, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+/* Slot rows reused from LeagueOverview inside the CC teams dropdown */
+.teams-slots-list .lo-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px dashed rgba(139, 92, 246, 0.15);
+  min-height: 24px;
+}
+.teams-slots-list .lo-slot-row.lo-slot-filled {
+  border-style: solid;
+  border-color: rgba(139, 92, 246, 0.22);
+  background: rgba(139, 92, 246, 0.05);
+}
+.teams-slots-list .lo-slot-row.lo-slot-keeper {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.04);
+}
+.teams-slots-list .lo-slot-player {
+  flex: 1;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #d8caf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.teams-slots-list .lo-slot-team {
+  font-weight: 400;
+  color: #7c5cbf;
+  font-size: 0.62rem;
+}
+.teams-slots-list .lo-slot-empty {
+  flex: 1;
+  font-size: 0.62rem;
+  color: rgba(139, 92, 246, 0.28);
+  font-style: italic;
+}
+.teams-slots-list .lo-slot-price {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #7c5cbf;
+  flex-shrink: 0;
+}
 
 .tier-cell { text-align: left; vertical-align: middle; }
 

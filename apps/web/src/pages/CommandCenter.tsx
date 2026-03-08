@@ -180,6 +180,89 @@ function LeftPanel({
         : { col, dir: col === "name" ? "asc" : "desc" },
     );
 
+  type TeamCol = "name" | "remaining" | "spent" | "open" | "maxBid";
+  const [teamSort, setTeamSort] = useState<{
+    col: TeamCol;
+    dir: "asc" | "desc";
+  }>({ col: "name", dir: "asc" });
+  const toggleTeamSort = (col: TeamCol) =>
+    setTeamSort((prev) =>
+      prev.col === col
+        ? { col, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { col, dir: col === "name" ? "asc" : "desc" },
+    );
+
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+  const toggleTeamExpand = (name: string) =>
+    setExpandedTeams((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+
+  const TEAM_SLOT_ORDER = [
+    "C",
+    "1B",
+    "2B",
+    "3B",
+    "SS",
+    "MI",
+    "CI",
+    "OF",
+    "UTIL",
+    "SP",
+    "RP",
+    "P",
+    "BN",
+  ];
+  const teamSlotMap = useMemo(() => {
+    type SlotEntry = {
+      position: string;
+      playerName: string | null;
+      playerTeam: string | null;
+      price: number | null;
+      isKeeper: boolean;
+    };
+    const map = new Map<string, SlotEntry[]>();
+    if (!league) return map;
+    const orderedPositions = [
+      ...TEAM_SLOT_ORDER.filter((p) => league.rosterSlots[p] !== undefined),
+      ...Object.keys(league.rosterSlots).filter(
+        (p) => !TEAM_SLOT_ORDER.includes(p),
+      ),
+    ];
+    league.teamNames.forEach((name, i) => {
+      const teamId = `team_${i + 1}`;
+      const teamEntries = rosterEntries.filter((e) => e.teamId === teamId);
+      const slots: SlotEntry[] = [];
+      const usedIds = new Set<string>();
+      for (const pos of orderedPositions) {
+        const count = league.rosterSlots[pos] ?? 0;
+        const posEntries = teamEntries.filter(
+          (e) => e.rosterSlot === pos && !usedIds.has(e._id),
+        );
+        for (let j = 0; j < count; j++) {
+          const entry = posEntries[j];
+          if (entry) usedIds.add(entry._id);
+          slots.push({
+            position: pos,
+            playerName: entry?.playerName ?? null,
+            playerTeam: entry?.playerTeam ?? null,
+            price: entry?.price ?? null,
+            isKeeper: entry?.isKeeper ?? false,
+          });
+        }
+      }
+      map.set(name, slots);
+    });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [league, rosterEntries]);
+
   const sortedTeamData = useMemo(() => {
     const { col, dir } = liqSort;
     return [...teamData].sort((a, b) => {
@@ -457,31 +540,124 @@ function LeftPanel({
           <table className="teams-table">
             <thead>
               <tr>
-                <th>TEAM</th>
-                <th>$ LEFT</th>
-                <th>SPENT</th>
-                <th>OPEN</th>
-                <th>MAX</th>
+                {(
+                  [
+                    ["name", "TEAM"],
+                    ["remaining", "$ LEFT"],
+                    ["spent", "SPENT"],
+                    ["open", "OPEN"],
+                    ["maxBid", "MAX"],
+                  ] as [TeamCol, string][]
+                ).map(([col, label]) => (
+                  <th
+                    key={col}
+                    className="liq-th-sortable"
+                    onClick={() => toggleTeamSort(col)}
+                  >
+                    {label}
+                    {teamSort.col === col ? (
+                      <span className="th-sort-icon th-sort-active">
+                        {teamSort.dir === "asc" ? "▲" : "▼"}
+                      </span>
+                    ) : (
+                      <span className="th-sort-icon th-sort-idle">↕</span>
+                    )}
+                  </th>
+                ))}
+                <th style={{ width: 24 }} />
               </tr>
             </thead>
             <tbody>
               {teamData.length > 0 ? (
-                teamData.map((t) => (
-                  <tr
-                    key={t.name}
-                    className={t.name === myTeamName ? "my-team-row" : ""}
-                  >
-                    <td className="team-name-cell">{t.name}</td>
-                    <td>${t.remaining}</td>
-                    <td>${t.spent}</td>
-                    <td>{t.open}</td>
-                    <td className="green">${t.maxBid}</td>
-                  </tr>
-                ))
+                [...teamData]
+                  .sort((a, b) => {
+                    const { col, dir } = teamSort;
+                    const av = a[col as keyof TeamSummary];
+                    const bv = b[col as keyof TeamSummary];
+                    const diff =
+                      typeof av === "string"
+                        ? (av as string).localeCompare(bv as string)
+                        : (av as number) - (bv as number);
+                    return dir === "asc" ? diff : -diff;
+                  })
+                  .map((t) => {
+                    const expanded = expandedTeams.has(t.name);
+                    const slots = teamSlotMap.get(t.name) ?? [];
+                    return (
+                      <>
+                        <tr
+                          key={t.name}
+                          className={
+                            (t.name === myTeamName ? "my-team-row" : "") +
+                            " teams-table-row"
+                          }
+                          onClick={() => toggleTeamExpand(t.name)}
+                        >
+                          <td className="team-name-cell">{t.name}</td>
+                          <td>${t.remaining}</td>
+                          <td>${t.spent}</td>
+                          <td>{t.open}</td>
+                          <td className="green">${t.maxBid}</td>
+                          <td className="teams-expand-icon">
+                            {expanded ? (
+                              <ChevronUp size={11} />
+                            ) : (
+                              <ChevronDown size={11} />
+                            )}
+                          </td>
+                        </tr>
+                        {expanded && (
+                          <tr
+                            key={t.name + "-slots"}
+                            className="teams-slots-row"
+                          >
+                            <td colSpan={6} className="teams-slots-cell">
+                              <div className="teams-slots-list">
+                                {slots.map((slot, i) => (
+                                  <div
+                                    key={`${slot.position}-${i}`}
+                                    className={
+                                      "lo-slot-row" +
+                                      (slot.playerName
+                                        ? " lo-slot-filled"
+                                        : "") +
+                                      (slot.isKeeper ? " lo-slot-keeper" : "")
+                                    }
+                                  >
+                                    <PosBadge pos={slot.position} />
+                                    {slot.playerName ? (
+                                      <span className="lo-slot-player">
+                                        {slot.playerName}
+                                        {slot.playerTeam && (
+                                          <span className="lo-slot-team">
+                                            {" "}
+                                            · {slot.playerTeam}
+                                          </span>
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span className="lo-slot-empty">
+                                        — empty —
+                                      </span>
+                                    )}
+                                    {slot.price !== null && (
+                                      <span className="lo-slot-price">
+                                        ${slot.price}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="dim"
                     style={{ textAlign: "center", padding: "1rem 0" }}
                   >
