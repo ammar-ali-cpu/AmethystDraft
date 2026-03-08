@@ -649,6 +649,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.pos-budget-table td.green  { color: #4ade80; }
+.pos-budget-table td.yellow { color: #facc15; }
+.pos-budget-table td.red    { color: #f87171; }
+.pos-budget-table td.dim    { color: #4a3a60; }
+.pos-budget-table tr.dim td { opacity: 0.45; }
+
 .pb-pos { font-weight: 700; color: #c4b5d4; }
 
 /* Category pace */

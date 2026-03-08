@@ -121,8 +121,6 @@ const FALLBACK_CATS: { name: string; type: "batting" | "pitching" }[] = [
   { name: "WHIP", type: "pitching" },
 ];
 
-
-
 // ─── Team card ────────────────────────────────────────────────────────────────
 
 function TeamCard({ data }: { data: TeamData }) {
@@ -267,8 +265,7 @@ export default function LeagueOverview() {
   );
 
   const standings = useMemo(
-    () =>
-      buildProjectedStandings(teamNames, entries, playerMap, scoringCats),
+    () => buildProjectedStandings(teamNames, entries, playerMap, scoringCats),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [teamNames.join(","), entries, playerMap, scoringCats],
   );

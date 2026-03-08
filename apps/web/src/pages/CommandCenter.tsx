@@ -181,7 +181,10 @@ function LeftPanel({
   const rankMaps = useMemo(
     () =>
       Object.fromEntries(
-        scoringCats.map((c) => [c.name, computeRanks(projectedStandings, c.name)]),
+        scoringCats.map((c) => [
+          c.name,
+          computeRanks(projectedStandings, c.name),
+        ]),
       ),
     [projectedStandings, scoringCats],
   );
@@ -456,7 +459,8 @@ function LeftPanel({
                       <th
                         key={c.name}
                         className={
-                          "lo-th-stat" + (sortCat === c.name ? " lo-th-active" : "")
+                          "lo-th-stat" +
+                          (sortCat === c.name ? " lo-th-active" : "")
                         }
                         onClick={() => toggleSort(c.name)}
                       >
@@ -487,7 +491,10 @@ function LeftPanel({
                         );
                         const val = row.stats[c.name] ?? 0;
                         return (
-                          <td key={c.name} className={`lo-td-stat ${colorClass}`}>
+                          <td
+                            key={c.name}
+                            className={`lo-td-stat ${colorClass}`}
+                          >
                             {formatStatCell(c.name, val)}
                           </td>
                         );
@@ -543,16 +550,25 @@ function RightPanel({
     (c) => c.type === "pitching",
   );
 
-  // Position budget plan
+  // Position budget plan — read saved targets from MyDraft localStorage
+  const savedPositionTargets: Record<string, number> = (() => {
+    try {
+      const raw = localStorage.getItem("amethyst-position-targets");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  })();
+
   const posBudgetPlan = league
     ? Object.entries(league.rosterSlots).map(([pos, count]) => {
         const entriesAtSlot = myTeamEntries.filter((e) => e.rosterSlot === pos);
         const spent = entriesAtSlot.reduce((s, e) => s + e.price, 0);
         const filled = entriesAtSlot.length;
         const open = Math.max(0, count - filled);
-        const target = Math.round(
-          (count / totalSlots) * (league.budget ?? 260),
-        );
+        const target =
+          savedPositionTargets[pos] ??
+          Math.round((count / totalSlots) * (league.budget ?? 260));
         const delta = target - spent;
         return { pos, open, target, spent, delta };
       })
@@ -563,7 +579,9 @@ function RightPanel({
   const allCats = [...hittingCats, ...pitchingCats];
   const catPace: Record<string, number> = {};
   for (const cat of allCats) {
-    const isRate = ["ERA", "WHIP"].includes(cat.name.toUpperCase());
+    const n = cat.name.toUpperCase();
+    const isLowerBetter = ["ERA", "WHIP", "WALKS + HITS PER IP"].includes(n);
+    const isRate = isLowerBetter || ["AVG", "OBP", "SLG"].includes(n);
     const getVal = (entry: RosterEntry) => {
       const p = allPlayers.find((a) => a.id === entry.externalPlayerId);
       return p ? getStatByCategory(p, cat.name, cat.type) : 0;
@@ -577,8 +595,12 @@ function RightPanel({
       const allAvg = allVals.length
         ? allVals.reduce((a, b) => a + b, 0) / allVals.length
         : 0;
+      // For lower-is-better (ERA/WHIP): allAvg/myAvg — lower mine = higher %
+      // For higher-is-better (AVG/OBP/SLG): myAvg/allAvg
       catPace[cat.name] =
-        allAvg > 0 && myAvg > 0 ? Math.round((allAvg / myAvg) * 100) : 0;
+        allAvg > 0 && myAvg > 0
+          ? Math.round((isLowerBetter ? allAvg / myAvg : myAvg / allAvg) * 100)
+          : 0;
     } else {
       const myTotal = myTeamEntries.reduce((s, e) => s + getVal(e), 0);
       const allTotal = rosterEntries.reduce((s, e) => s + getVal(e), 0);
@@ -630,17 +652,31 @@ function RightPanel({
           </tr>
         </thead>
         <tbody>
-          {posBudgetPlan.map(({ pos, open, target, spent, delta }) => (
-            <tr key={pos}>
-              <td className="pb-pos">{pos}</td>
-              <td>{open}</td>
-              <td>${target}</td>
-              <td>${spent}</td>
-              <td className={delta >= 0 ? "green" : "red"}>
-                {delta >= 0 ? `+${delta}` : delta}
-              </td>
-            </tr>
-          ))}
+          {posBudgetPlan.map(({ pos, open, target, spent, delta }) => {
+            const pct = target > 0 ? spent / target : 0;
+            const spentClass =
+              pct > 1
+                ? "red"
+                : pct >= 0.8
+                  ? "yellow"
+                  : spent > 0
+                    ? "green"
+                    : "";
+            const filled = open === 0;
+            return (
+              <tr key={pos} className={filled ? "dim" : ""}>
+                <td className="pb-pos">{pos}</td>
+                <td className={open === 0 ? "dim" : ""}>
+                  {open === 0 ? "✓" : open}
+                </td>
+                <td>${target}</td>
+                <td className={spentClass}>${spent}</td>
+                <td className={delta >= 0 ? "green" : "red"}>
+                  {delta >= 0 ? `+${delta}` : delta}
+                </td>
+              </tr>
+            );
+          })}
           {posBudgetPlan.length === 0 && (
             <tr>
               <td
@@ -665,12 +701,17 @@ function RightPanel({
             <div className="cat-pace-row">
               {hittingCats.map((c) => {
                 const pct = catPace[c.name] ?? 0;
+                const hasData = pct > 0;
                 const color =
                   pct >= 95 ? "green" : pct >= 75 ? "yellow" : "red";
                 return (
                   <div key={c.name} className="cat-pace-item">
                     <div className="cp-label">{c.name}</div>
-                    {pct > 0 && <div className={`cp-pct ${color}`}>{pct}%</div>}
+                    {hasData ? (
+                      <div className={`cp-pct ${color}`}>{pct}%</div>
+                    ) : (
+                      <div className="cp-pct dim">--</div>
+                    )}
                   </div>
                 );
               })}
@@ -688,12 +729,17 @@ function RightPanel({
             <div className="cat-pace-row">
               {pitchingCats.map((c) => {
                 const pct = catPace[c.name] ?? 0;
+                const hasData = pct > 0;
                 const color =
                   pct >= 95 ? "green" : pct >= 75 ? "yellow" : "red";
                 return (
                   <div key={c.name} className="cat-pace-item">
                     <div className="cp-label">{c.name}</div>
-                    {pct > 0 && <div className={`cp-pct ${color}`}>{pct}%</div>}
+                    {hasData ? (
+                      <div className={`cp-pct ${color}`}>{pct}%</div>
+                    ) : (
+                      <div className="cp-pct dim">--</div>
+                    )}
                   </div>
                 );
               })}

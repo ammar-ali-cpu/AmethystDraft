@@ -174,8 +174,10 @@ function getProjStat(
     if (n === "R" || n === "RUNS") return b.runs;
     if (n === "SB") return b.sb;
     if (n === "AVG") return parseFloat(String(b.avg)) || 0;
-    if (n === "OBP") return parseFloat(String(player.stats?.batting?.obp ?? "0")) || 0;
-    if (n === "SLG") return parseFloat(String(player.stats?.batting?.slg ?? "0")) || 0;
+    if (n === "OBP")
+      return parseFloat(String(player.stats?.batting?.obp ?? "0")) || 0;
+    if (n === "SLG")
+      return parseFloat(String(player.stats?.batting?.slg ?? "0")) || 0;
     return 0;
   } else {
     const p = player.projection?.pitching ?? player.stats?.pitching;
