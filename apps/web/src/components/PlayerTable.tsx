@@ -38,6 +38,8 @@ type DisplayPitching = {
 };
 
 const POSITIONS = ["all", "OF", "SS", "1B", "2B", "3B", "C", "DH", "SP", "RP"];
+const HITTER_POSITIONS = ["OF", "SS", "1B", "2B", "3B", "C", "DH"];
+const PITCHER_POSITION_LIST = ["SP", "RP"];
 
 const TIER_COLORS: Record<number, string> = {
   1: "#a855f7",
@@ -374,6 +376,20 @@ export default function PlayerTable({
       return new Set();
     }
   });
+  const [statView, setStatView] = useState<"all" | "hitting" | "pitching">(
+    () => {
+      try {
+        return (
+          (localStorage.getItem("amethyst-pt-statview") as
+            | "all"
+            | "hitting"
+            | "pitching") ?? "all"
+        );
+      } catch {
+        return "all";
+      }
+    },
+  );
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const tagDropdownRef = useRef<HTMLDivElement>(null);
   const [clientSort, setClientSort] = useState<{
@@ -421,6 +437,13 @@ export default function PlayerTable({
       /* noop */
     }
   }, [clientSort]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("amethyst-pt-statview", statView);
+    } catch {
+      /* noop */
+    }
+  }, [statView]);
 
   const ALL_TAGS = ["HR+", "SB+", "AVG+", "R+", "RBI+", "K+", "W+", "SV+"];
 
@@ -466,6 +489,12 @@ export default function PlayerTable({
   }, [scoringCategories]);
 
   const numStatCols = Math.max(batCols.length, pitCols.length);
+  // When a focused view is selected, use only that side's columns
+  const focusedCols =
+    statView === "hitting" ? batCols : statView === "pitching" ? pitCols : null;
+  const focusedType: "batting" | "pitching" | null =
+    statView === "hitting" ? "batting" : statView === "pitching" ? "pitching" : null;
+  const numActiveCols = focusedCols ? focusedCols.length : numStatCols;
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -503,6 +532,17 @@ export default function PlayerTable({
         ? "2025"
         : "3YR";
 
+  // Determine pitcher by stats presence (same heuristic as isBatter below),
+  // falling back to position string so list works even with sparse data.
+  const PITCHER_POSITIONS = new Set(["SP", "RP", "P"]);
+  function playerIsPitcher(p: Player): boolean {
+    const hasPit = !!(p.projection?.pitching ?? p.stats?.pitching);
+    const hasBat = !!(p.projection?.batting ?? p.stats?.batting);
+    if (hasPit && !hasBat) return true;
+    if (hasBat && !hasPit) return false;
+    return PITCHER_POSITIONS.has(p.position.toUpperCase());
+  }
+
   const displayed = useMemo(() => {
     let base = starredOnly
       ? players.filter((p) => isInWatchlist(p.id))
@@ -511,8 +551,12 @@ export default function PlayerTable({
       base = base.filter((p) => !draftedIds?.has(p.id));
     else if (availabilityFilter === "drafted")
       base = base.filter((p) => draftedIds?.has(p.id));
+    if (statView === "hitting")
+      base = base.filter((p) => !playerIsPitcher(p));
+    else if (statView === "pitching")
+      base = base.filter((p) => playerIsPitcher(p));
     return base;
-  }, [players, starredOnly, availabilityFilter, draftedIds, isInWatchlist]);
+  }, [players, starredOnly, availabilityFilter, draftedIds, statView, isInWatchlist]);
 
   // Pre-compute tags for all players so we can filter before slicing
   const allRowData = useMemo(
@@ -591,6 +635,7 @@ export default function PlayerTable({
     <div className="pt-container">
       {/* ── Top controls bar ── */}
       <div className="pt-controls">
+        <div className="pt-controls-row1">
         <div className="pt-search">
           <Search size={15} className="pt-search-icon" />
           <input
@@ -620,11 +665,34 @@ export default function PlayerTable({
 
           <select
             className="pt-select"
+            value={statView}
+            onChange={(e) => {
+              const v = e.target.value as "all" | "hitting" | "pitching";
+              setStatView(v);
+              if (v === "hitting" && !HITTER_POSITIONS.includes(positionFilter)) {
+                onPositionChange("all");
+              } else if (v === "pitching" && !PITCHER_POSITION_LIST.includes(positionFilter)) {
+                onPositionChange("all");
+              }
+            }}
+          >
+            <option value="all">Hitters/Pitchers</option>
+            <option value="hitting">Hitters</option>
+            <option value="pitching">Pitchers</option>
+          </select>
+
+          <select
+            className="pt-select"
             value={positionFilter}
             onChange={(e) => onPositionChange(e.target.value)}
           >
             <option value="all">Position (All)</option>
-            {POSITIONS.slice(1).map((p) => (
+            {(statView === "hitting"
+              ? HITTER_POSITIONS
+              : statView === "pitching"
+                ? PITCHER_POSITION_LIST
+                : POSITIONS.slice(1)
+            ).map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>
@@ -684,23 +752,26 @@ export default function PlayerTable({
             <RotateCcw size={14} />
           </button>
         </div>
-        {onStatBasisChange && (
-          <div className="pt-basis-pills">
-            {(["projections", "last-year", "3-year-avg"] as const).map((b) => (
-              <button
-                key={b}
-                className={"pt-pill " + (statBasis === b ? "active" : "")}
-                onClick={() => onStatBasisChange(b)}
-              >
-                {b === "projections"
-                  ? "PROJ"
-                  : b === "last-year"
-                    ? "2025"
-                    : "3YR"}
-              </button>
-            ))}
-          </div>
-        )}
+        </div>{/* end pt-controls-row1 */}
+        <div className="pt-controls-row2">
+          {onStatBasisChange && (
+            <div className="pt-basis-pills">
+              {(["projections", "last-year", "3-year-avg"] as const).map((b) => (
+                <button
+                  key={b}
+                  className={"pt-pill " + (statBasis === b ? "active" : "")}
+                  onClick={() => onStatBasisChange(b)}
+                >
+                  {b === "projections"
+                    ? "PROJ"
+                    : b === "last-year"
+                      ? "2025"
+                      : "3YR"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Table ── */}
@@ -737,27 +808,37 @@ export default function PlayerTable({
               >
                 Val Diff <SortArrow col="valdiff" sort={clientSort} />
               </th>
-              {Array.from({ length: numStatCols }, (_, i) => {
-                const b = batCols[i];
-                const p = pitCols[i];
-                const label = b && p ? `${b}/${p}` : (b ?? p ?? "");
-                return (
-                  <th
-                    key={i}
-                    className={`${i === 0 ? "th-avg" : "th-stat"} th-sortable`}
-                    onClick={() => handleColSort(`stat-${i}`)}
-                  >
-                    {label} <SortArrow col={`stat-${i}`} sort={clientSort} />
-                  </th>
-                );
-              })}
+              {focusedCols
+                ? focusedCols.map((col, i) => (
+                    <th
+                      key={i}
+                      className={`${i === 0 ? "th-avg" : "th-stat"} th-sortable`}
+                      onClick={() => handleColSort(`stat-${i}`)}
+                    >
+                      {col} <SortArrow col={`stat-${i}`} sort={clientSort} />
+                    </th>
+                  ))
+                : Array.from({ length: numStatCols }, (_, i) => {
+                    const b = batCols[i];
+                    const p = pitCols[i];
+                    const label = b && p ? `${b}/${p}` : (b ?? p ?? "");
+                    return (
+                      <th
+                        key={i}
+                        className={`${i === 0 ? "th-avg" : "th-stat"} th-sortable`}
+                        onClick={() => handleColSort(`stat-${i}`)}
+                      >
+                        {label} <SortArrow col={`stat-${i}`} sort={clientSort} />
+                      </th>
+                    );
+                  })}
               <th className="th-notes">Notes</th>
             </tr>
           </thead>
           <tbody>
             {filteredRowData.length === 0 && (
               <tr>
-                <td colSpan={10 + numStatCols} className="pt-empty">
+                <td colSpan={10 + numActiveCols} className="pt-empty">
                   No players found.
                 </td>
               </tr>
@@ -839,29 +920,41 @@ export default function PlayerTable({
                       {valDiff}
                     </td>
 
-                    {Array.from({ length: numStatCols }, (_, i) => (
-                      <td key={i} className="td-stat">
-                        {isBatter
-                          ? batCols[i]
-                            ? getDisplayStatValue(
-                                batCols[i],
-                                "batting",
-                                bat,
-                                pit,
-                                player,
-                              )
-                            : "-"
-                          : pitCols[i]
-                            ? getDisplayStatValue(
-                                pitCols[i],
-                                "pitching",
-                                bat,
-                                pit,
-                                player,
-                              )
-                            : "-"}
-                      </td>
-                    ))}
+                    {focusedCols
+                      ? focusedCols.map((col, i) => (
+                          <td key={i} className="td-stat">
+                            {getDisplayStatValue(
+                              col,
+                              focusedType!,
+                              bat,
+                              pit,
+                              player,
+                            )}
+                          </td>
+                        ))
+                      : Array.from({ length: numStatCols }, (_, i) => (
+                          <td key={i} className="td-stat">
+                            {isBatter
+                              ? batCols[i]
+                                ? getDisplayStatValue(
+                                    batCols[i],
+                                    "batting",
+                                    bat,
+                                    pit,
+                                    player,
+                                  )
+                                : "-"
+                              : pitCols[i]
+                                ? getDisplayStatValue(
+                                    pitCols[i],
+                                    "pitching",
+                                    bat,
+                                    pit,
+                                    player,
+                                  )
+                                : "-"}
+                          </td>
+                        ))}
 
                     <td
                       className="td-notes"
