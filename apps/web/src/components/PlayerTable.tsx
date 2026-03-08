@@ -493,7 +493,11 @@ export default function PlayerTable({
   const focusedCols =
     statView === "hitting" ? batCols : statView === "pitching" ? pitCols : null;
   const focusedType: "batting" | "pitching" | null =
-    statView === "hitting" ? "batting" : statView === "pitching" ? "pitching" : null;
+    statView === "hitting"
+      ? "batting"
+      : statView === "pitching"
+        ? "pitching"
+        : null;
   const numActiveCols = focusedCols ? focusedCols.length : numStatCols;
 
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -551,12 +555,18 @@ export default function PlayerTable({
       base = base.filter((p) => !draftedIds?.has(p.id));
     else if (availabilityFilter === "drafted")
       base = base.filter((p) => draftedIds?.has(p.id));
-    if (statView === "hitting")
-      base = base.filter((p) => !playerIsPitcher(p));
+    if (statView === "hitting") base = base.filter((p) => !playerIsPitcher(p));
     else if (statView === "pitching")
       base = base.filter((p) => playerIsPitcher(p));
     return base;
-  }, [players, starredOnly, availabilityFilter, draftedIds, statView, isInWatchlist]);
+  }, [
+    players,
+    starredOnly,
+    availabilityFilter,
+    draftedIds,
+    statView,
+    isInWatchlist,
+  ]);
 
   // Pre-compute tags for all players so we can filter before slicing
   const allRowData = useMemo(
@@ -636,139 +646,150 @@ export default function PlayerTable({
       {/* ── Top controls bar ── */}
       <div className="pt-controls">
         <div className="pt-controls-row1">
-        <div className="pt-search">
-          <Search size={15} className="pt-search-icon" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Search players by name..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pt-search-input"
-          />
-        </div>
-
-        <div className="pt-filters">
-          <select
-            className="pt-select"
-            value={availabilityFilter}
-            onChange={(e) =>
-              setAvailabilityFilter(
-                e.target.value as "all" | "available" | "drafted",
-              )
-            }
-          >
-            <option value="all">Availability (All)</option>
-            <option value="available">Available</option>
-            <option value="drafted">Drafted</option>
-          </select>
-
-          <select
-            className="pt-select"
-            value={statView}
-            onChange={(e) => {
-              const v = e.target.value as "all" | "hitting" | "pitching";
-              setStatView(v);
-              if (v === "hitting" && !HITTER_POSITIONS.includes(positionFilter)) {
-                onPositionChange("all");
-              } else if (v === "pitching" && !PITCHER_POSITION_LIST.includes(positionFilter)) {
-                onPositionChange("all");
-              }
-            }}
-          >
-            <option value="all">Hitters/Pitchers</option>
-            <option value="hitting">Hitters</option>
-            <option value="pitching">Pitchers</option>
-          </select>
-
-          <select
-            className="pt-select"
-            value={positionFilter}
-            onChange={(e) => onPositionChange(e.target.value)}
-          >
-            <option value="all">Position (All)</option>
-            {(statView === "hitting"
-              ? HITTER_POSITIONS
-              : statView === "pitching"
-                ? PITCHER_POSITION_LIST
-                : POSITIONS.slice(1)
-            ).map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-
-          <button
-            className={"pt-toggle " + (starredOnly ? "active" : "")}
-            onClick={() => setStarredOnly((v) => !v)}
-          >
-            <Star size={13} fill={starredOnly ? "#fbbf24" : "none"} />
-            Starred only
-          </button>
-
-          <div className="pt-tag-wrap">
-            <button
-              className={"pt-toggle " + (selectedTags.size > 0 ? "active" : "")}
-              onClick={() => setTagDropdownOpen((v) => !v)}
-            >
-              <Tag size={13} />
-              Tags{selectedTags.size > 0 ? ` (${selectedTags.size})` : ""}
-            </button>
-            {tagDropdownOpen && (
-              <div className="pt-tag-dropdown" ref={tagDropdownRef}>
-                {ALL_TAGS.map((tag) => (
-                  <label key={tag} className="pt-tag-option">
-                    <input
-                      type="checkbox"
-                      checked={selectedTags.has(tag)}
-                      onChange={() => toggleTag(tag)}
-                    />
-                    <span className="tag">{tag}</span>
-                  </label>
-                ))}
-                {selectedTags.size > 0 && (
-                  <button
-                    className="pt-tag-clear"
-                    onClick={() => setSelectedTags(new Set())}
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            )}
+          <div className="pt-search">
+            <Search size={15} className="pt-search-icon" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search players by name..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pt-search-input"
+            />
           </div>
 
-          <button
-            className="pt-icon-btn"
-            title="Reset filters"
-            onClick={() => {
-              onSearchChange("");
-              onPositionChange("all");
-              setSelectedTags(new Set());
-              setAvailabilityFilter("all");
-            }}
-          >
-            <RotateCcw size={14} />
-          </button>
+          <div className="pt-filters">
+            <select
+              className="pt-select"
+              value={availabilityFilter}
+              onChange={(e) =>
+                setAvailabilityFilter(
+                  e.target.value as "all" | "available" | "drafted",
+                )
+              }
+            >
+              <option value="all">Availability (All)</option>
+              <option value="available">Available</option>
+              <option value="drafted">Drafted</option>
+            </select>
+
+            <select
+              className="pt-select"
+              value={statView}
+              onChange={(e) => {
+                const v = e.target.value as "all" | "hitting" | "pitching";
+                setStatView(v);
+                if (
+                  v === "hitting" &&
+                  !HITTER_POSITIONS.includes(positionFilter)
+                ) {
+                  onPositionChange("all");
+                } else if (
+                  v === "pitching" &&
+                  !PITCHER_POSITION_LIST.includes(positionFilter)
+                ) {
+                  onPositionChange("all");
+                }
+              }}
+            >
+              <option value="all">Hitters/Pitchers</option>
+              <option value="hitting">Hitters</option>
+              <option value="pitching">Pitchers</option>
+            </select>
+
+            <select
+              className="pt-select"
+              value={positionFilter}
+              onChange={(e) => onPositionChange(e.target.value)}
+            >
+              <option value="all">Position (All)</option>
+              {(statView === "hitting"
+                ? HITTER_POSITIONS
+                : statView === "pitching"
+                  ? PITCHER_POSITION_LIST
+                  : POSITIONS.slice(1)
+              ).map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+
+            <button
+              className={"pt-toggle " + (starredOnly ? "active" : "")}
+              onClick={() => setStarredOnly((v) => !v)}
+            >
+              <Star size={13} fill={starredOnly ? "#fbbf24" : "none"} />
+              Starred only
+            </button>
+
+            <div className="pt-tag-wrap">
+              <button
+                className={
+                  "pt-toggle " + (selectedTags.size > 0 ? "active" : "")
+                }
+                onClick={() => setTagDropdownOpen((v) => !v)}
+              >
+                <Tag size={13} />
+                Tags{selectedTags.size > 0 ? ` (${selectedTags.size})` : ""}
+              </button>
+              {tagDropdownOpen && (
+                <div className="pt-tag-dropdown" ref={tagDropdownRef}>
+                  {ALL_TAGS.map((tag) => (
+                    <label key={tag} className="pt-tag-option">
+                      <input
+                        type="checkbox"
+                        checked={selectedTags.has(tag)}
+                        onChange={() => toggleTag(tag)}
+                      />
+                      <span className="tag">{tag}</span>
+                    </label>
+                  ))}
+                  {selectedTags.size > 0 && (
+                    <button
+                      className="pt-tag-clear"
+                      onClick={() => setSelectedTags(new Set())}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              className="pt-icon-btn"
+              title="Reset filters"
+              onClick={() => {
+                onSearchChange("");
+                onPositionChange("all");
+                setSelectedTags(new Set());
+                setAvailabilityFilter("all");
+              }}
+            >
+              <RotateCcw size={14} />
+            </button>
+          </div>
         </div>
-        </div>{/* end pt-controls-row1 */}
+        {/* end pt-controls-row1 */}
         <div className="pt-controls-row2">
           {onStatBasisChange && (
             <div className="pt-basis-pills">
-              {(["projections", "last-year", "3-year-avg"] as const).map((b) => (
-                <button
-                  key={b}
-                  className={"pt-pill " + (statBasis === b ? "active" : "")}
-                  onClick={() => onStatBasisChange(b)}
-                >
-                  {b === "projections"
-                    ? "PROJ"
-                    : b === "last-year"
-                      ? "2025"
-                      : "3YR"}
-                </button>
-              ))}
+              {(["projections", "last-year", "3-year-avg"] as const).map(
+                (b) => (
+                  <button
+                    key={b}
+                    className={"pt-pill " + (statBasis === b ? "active" : "")}
+                    onClick={() => onStatBasisChange(b)}
+                  >
+                    {b === "projections"
+                      ? "PROJ"
+                      : b === "last-year"
+                        ? "2025"
+                        : "3YR"}
+                  </button>
+                ),
+              )}
             </div>
           )}
         </div>
@@ -828,7 +849,8 @@ export default function PlayerTable({
                         className={`${i === 0 ? "th-avg" : "th-stat"} th-sortable`}
                         onClick={() => handleColSort(`stat-${i}`)}
                       >
-                        {label} <SortArrow col={`stat-${i}`} sort={clientSort} />
+                        {label}{" "}
+                        <SortArrow col={`stat-${i}`} sort={clientSort} />
                       </th>
                     );
                   })}
