@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router";
+import PosBadge from "./PosBadge";
 import { useLeague } from "../contexts/LeagueContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useWatchlist } from "../contexts/WatchlistContext";
@@ -432,7 +433,7 @@ export function AuctionCenter({
                   className="cc-dropdown-item"
                   onMouseDown={() => handleSelectPlayer(p)}
                 >
-                  <span className="cc-dd-pos">{p.position}</span>
+                  <PosBadge pos={p.position} />
                   <span className="cc-dd-name">
                     {p.name}
                     {isInWatchlist(p.id) && (
@@ -481,9 +482,7 @@ export function AuctionCenter({
               <div className="pac-meta-row">
                 <div className="pac-stat">
                   <span className="pac-stat-label">Position</span>
-                  <span className="pac-stat-value">
-                    {selectedPlayer.position}
-                  </span>
+                  <PosBadge pos={selectedPlayer.position} />
                 </div>
                 <div className="pac-stat">
                   <span className="pac-stat-label">Team</span>

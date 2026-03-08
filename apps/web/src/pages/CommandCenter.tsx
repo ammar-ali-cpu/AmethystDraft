@@ -13,6 +13,7 @@ import type { RosterEntry } from "../api/roster";
 import "./CommandCenter.css";
 import { DraftLogRow } from "../components/DraftLogRow";
 import { AuctionCenter } from "../components/AuctionCenter";
+import PosBadge from "../components/PosBadge";
 import {
   type TeamSummary,
   getStatByCategory,
@@ -252,9 +253,7 @@ function LeftPanel({
           <>
             <div className="market-section-label">
               {posMarket ? posMarket.position : "—"} MARKET
-              {posMarket && (
-                <span className="pos-chip">{posMarket.position}</span>
-              )}
+              {posMarket && <PosBadge pos={posMarket.position} />}
             </div>
             <div className="market-stat-row">
               <span className="msr-label">AVG WINNING PRICE</span>

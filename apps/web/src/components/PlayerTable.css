@@ -526,7 +526,7 @@
 /* ── Stat cells ── */
 .td-stat { color: #b0a0cc; font-variant-numeric: tabular-nums; }
 .td-rank { color: #6b4fa0; font-weight: 700; }
-.td-pos { color: #9080b0; }
+.td-pos { }
 .td-team { color: #9080b0; }
 .td-adp { color: #9080b0; }
 

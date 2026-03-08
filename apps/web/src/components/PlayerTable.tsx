@@ -2,6 +2,7 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { Search, Star, RotateCcw, Tag } from "lucide-react";
 import type { Player } from "../types/player";
 import { useWatchlist } from "../contexts/WatchlistContext";
+import PosBadge from "./PosBadge";
 import "./PlayerTable.css";
 
 type StatBasis = "projections" | "last-year" | "3-year-avg";
@@ -940,7 +941,9 @@ export default function PlayerTable({
                       </div>
                     </td>
 
-                    <td className="td-pos">{player.position}</td>
+                    <td className="td-pos">
+                      <PosBadge pos={player.position} />
+                    </td>
                     <td className="td-team">{player.team}</td>
 
                     <td className="td-tier">

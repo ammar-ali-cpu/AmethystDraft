@@ -4,6 +4,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { useWatchlist } from "../contexts/WatchlistContext";
 import { usePlayerNotes } from "../contexts/PlayerNotesContext";
 import type { Player } from "../types/player";
+import PosBadge from "../components/PosBadge";
 import "./MyDraft.css";
 
 // TODO(data): Replace with league-specific budget from backend once league settings are wired.
@@ -411,7 +412,7 @@ export default function MyDraft() {
                           </div>
                         </td>
                         <td>
-                          <span className="pos-chip">{pos}</span>
+                          <PosBadge pos={pos} />
                         </td>
                         <td className="money">
                           ${Math.round(player.value ?? 0)}

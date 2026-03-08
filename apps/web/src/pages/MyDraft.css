@@ -288,15 +288,7 @@
   font-size: 0.63rem;
 }
 
-.pos-chip {
-  display: inline-block;
-  padding: 0.09rem 0.36rem;
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: #a78bfa;
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  background: rgba(139, 92, 246, 0.12);
-}
+/* pos-chip replaced by PosBadge component */
 
 .money {
   color: #22c55e;

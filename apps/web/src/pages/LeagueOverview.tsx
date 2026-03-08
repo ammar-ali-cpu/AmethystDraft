@@ -7,6 +7,7 @@ import type { RosterEntry } from "../api/roster";
 import type { Player } from "../types/player";
 import { getPlayers } from "../api/players";
 import { DraftLogRow } from "../components/DraftLogRow";
+import PosBadge from "../components/PosBadge";
 import { usePageTitle } from "../hooks/usePageTitle";
 import {
   buildProjectedStandings,
@@ -160,7 +161,7 @@ function TeamCard({ data }: { data: TeamData }) {
               (slot.isKeeper ? " lo-slot-keeper" : "")
             }
           >
-            <span className="lo-slot-pos">{slot.position}</span>
+            <PosBadge pos={slot.position} />
             {slot.playerName ? (
               <span className="lo-slot-player">
                 {slot.playerName}
