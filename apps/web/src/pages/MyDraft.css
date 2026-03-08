@@ -343,6 +343,23 @@
   text-transform: uppercase;
 }
 
+.td-note { min-width: 120px; max-width: 200px; }
+
+.watchlist-note-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  color: #c4b5d4;
+  font-size: 0.7rem;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  padding: 0.1rem 0;
+  transition: border-color 120ms ease;
+}
+.watchlist-note-input:focus { border-bottom-color: rgba(139, 92, 246, 0.55); }
+.watchlist-note-input::placeholder { color: #4a3a60; }
+
 .unstar-btn {
   width: 22px;
   height: 22px;

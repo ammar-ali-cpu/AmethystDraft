@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Star, X } from "lucide-react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useWatchlist } from "../contexts/WatchlistContext";
+import { usePlayerNotes } from "../contexts/PlayerNotesContext";
 import type { Player } from "../types/player";
 import "./MyDraft.css";
 
@@ -46,8 +47,24 @@ function getPriority(player: Player): "High" | "Medium" | "Low" {
 export default function MyDraft() {
   usePageTitle("My Draft");
   const { watchlist, removeFromWatchlist } = useWatchlist();
+  const { getNote, setNote } = usePlayerNotes();
   const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
-  const [priorityOverrides, setPriorityOverrides] = useState<Record<string, "High" | "Medium" | "Low">>({});
+  const [priorityOverrides, setPriorityOverrides] = useState<Record<string, "High" | "Medium" | "Low">>(() => {
+    try {
+      const saved = localStorage.getItem("amethyst-priority-overrides");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  function setPriority(playerId: string, value: "High" | "Medium" | "Low") {
+    setPriorityOverrides((prev) => {
+      const next = { ...prev, [playerId]: value };
+      localStorage.setItem("amethyst-priority-overrides", JSON.stringify(next));
+      return next;
+    });
+  }
   // TODO(storage): Persist notes per league/user in backend; this is local-only state.
   const [draftNotes, setDraftNotes] = useState("");
   const [notesHeight, setNotesHeight] = useState(96);
@@ -275,14 +292,15 @@ export default function MyDraft() {
                   <th>Pos</th>
                   <th>Proj</th>
                   <th>Target</th>
-                  <th>A Priority</th>
+                  <th>Priority</th>
+                  <th>Notes</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredWatchlist.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="watchlist-empty">
+                    <td colSpan={7} className="watchlist-empty">
                       Star players in Research to populate this watchlist.
                     </td>
                   </tr>
@@ -322,16 +340,22 @@ export default function MyDraft() {
                             className={`priority-select ${priority.toLowerCase()}`}
                             value={priority}
                             onChange={(e) =>
-                              setPriorityOverrides((prev) => ({
-                                ...prev,
-                                [player.id]: e.target.value as "High" | "Medium" | "Low",
-                              }))
+                              setPriority(player.id, e.target.value as "High" | "Medium" | "Low")
                             }
                           >
                             <option value="High">High</option>
                             <option value="Medium">Medium</option>
                             <option value="Low">Low</option>
                           </select>
+                        </td>
+                        <td className="td-note">
+                          <input
+                            className="watchlist-note-input"
+                            value={getNote(player.id)}
+                            onChange={(e) => setNote(player.id, e.target.value)}
+                            placeholder="Note..."
+                            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                          />
                         </td>
                         <td>
                           <button
