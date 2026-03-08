@@ -446,12 +446,15 @@ export default function LeagueOverview() {
             <div className="lo-section-header">
               <span className="lo-section-title">DRAFT LOG</span>
               <span className="lo-section-meta">
-                {entries.length > 0 ? `${entries.length} picks` : "0 picks"}
+                {entries.filter((e) => !e.isKeeper).length > 0
+                  ? `${entries.filter((e) => !e.isKeeper).length} picks`
+                  : "0 picks"}
               </span>
             </div>
-            {entries.length > 0 ? (
+            {entries.filter((e) => !e.isKeeper).length > 0 ? (
               <div className="lo-dl-list">
                 {[...entries]
+                  .filter((e) => !e.isKeeper)
                   .sort(
                     (a, b) =>
                       new Date(a.acquiredAt ?? a.createdAt ?? 0).getTime() -

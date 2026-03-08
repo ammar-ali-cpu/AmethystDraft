@@ -63,7 +63,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   flex: 1;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .lo-cards-scroll::-webkit-scrollbar {
@@ -98,6 +98,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
 }
 
 .lo-card-header {
@@ -160,7 +161,14 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
 }
+
+.lo-slots::-webkit-scrollbar { width: 3px; }
+.lo-slots::-webkit-scrollbar-track { background: transparent; }
+.lo-slots::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.25); border-radius: 2px; }
 
 .lo-slot-row {
   display: flex;

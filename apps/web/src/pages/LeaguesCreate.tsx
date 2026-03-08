@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { ArrowLeft, ChevronRight, Search } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useLeagueForm } from "../hooks/useLeagueForm";
@@ -12,6 +12,8 @@ import {
 import { createLeague } from "../api/leagues";
 import { useAuth } from "../contexts/AuthContext";
 import { useLeague } from "../contexts/LeagueContext";
+import { getPlayers, getPlayersCached } from "../api/players";
+import type { Player as ApiPlayer } from "../types/player";
 import "../components/AuthNavbar.css";
 import "./LeaguesCreate.css";
 
@@ -33,6 +35,40 @@ export default function LeagueCreate() {
   const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [keeperPlayers, setKeeperPlayers] = useState<Player[]>(
+    () => {
+      const cached = getPlayersCached("adp");
+      return cached
+        ? cached.map((p: ApiPlayer) => ({
+            id: Number(p.id),
+            name: p.name,
+            team: p.team,
+            pos: p.positions?.join("/") || p.position,
+            adp: p.adp,
+            value: p.value,
+            headshot: p.headshot,
+            positions: p.positions,
+          }))
+        : [];
+    },
+  );
+
+  useEffect(() => {
+    void getPlayers("adp").then((apiPlayers: ApiPlayer[]) =>
+      setKeeperPlayers(
+        apiPlayers.map((p) => ({
+          id: Number(p.id),
+          name: p.name,
+          team: p.team,
+          pos: p.positions?.join("/") || p.position,
+          adp: p.adp,
+          value: p.value,
+          headshot: p.headshot,
+          positions: p.positions,
+        })),
+      ),
+    );
+  }, []);
 
   const {
     leagueName,
@@ -66,9 +102,12 @@ export default function LeagueCreate() {
     addKeeper,
     removeKeeper,
     getEligibleSlotsForPlayer,
-  } = useLeagueForm({ initialName: "Friendly League" });
+    keeperOwnerMap,
+    updateKeeperCost,
+  } = useLeagueForm({ initialName: "Friendly League", externalPlayers: keeperPlayers });
 
   const [pendingPlayer, setPendingPlayer] = useState<Player | null>(null);
+  const [pendingCost, setPendingCost] = useState("1");
   const [posFilter, setPosFilter] = useState("ALL");
   const [posEligibilityRaw, setPosEligibilityRaw] = useState(
     String(posEligibilityThreshold),
@@ -475,6 +514,9 @@ export default function LeagueCreate() {
                         {keeperDisplayPlayers.map((player) => {
                           const isPending = pendingPlayer?.id === player.id;
                           const eligible = getEligibleSlotsForPlayer(player);
+                          const keptByTeam = keeperOwnerMap.get(
+                            String(player.id),
+                          );
                           return (
                             <Fragment key={player.id}>
                               <div
@@ -483,13 +525,21 @@ export default function LeagueCreate() {
                                   (isPending ? " lc-player-pending" : "")
                                 }
                               >
-                                <div className="league-create-avatar">
-                                  {player.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .slice(0, 2)
-                                    .join("")}
-                                </div>
+                                {player.headshot ? (
+                                  <img
+                                    src={player.headshot}
+                                    alt={player.name}
+                                    className="lc-keeper-headshot"
+                                  />
+                                ) : (
+                                  <div className="league-create-avatar">
+                                    {player.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .slice(0, 2)
+                                      .join("")}
+                                  </div>
+                                )}
 
                                 <div className="league-create-player-main">
                                   <div className="league-create-player-name">
@@ -506,6 +556,13 @@ export default function LeagueCreate() {
                                 <div className="league-create-player-adp">
                                   ADP {player.adp}
                                 </div>
+                                {keptByTeam && (
+                                  <div className="league-create-player-kept-badge">
+                                    {keptByTeam === activeKeeperTeam
+                                      ? "KEPT"
+                                      : keptByTeam}
+                                  </div>
+                                )}
 
                                 <button
                                   type="button"
@@ -519,11 +576,8 @@ export default function LeagueCreate() {
                                       setPendingPlayer(null);
                                       return;
                                     }
-                                    if (eligible.length === 1) {
-                                      addKeeper(player, eligible[0]);
-                                    } else {
-                                      setPendingPlayer(player);
-                                    }
+                                    setPendingCost(String(player.value ?? 1));
+                                    setPendingPlayer(player);
                                   }}
                                 >
                                   {isPending ? "×" : "+"}
@@ -531,13 +585,30 @@ export default function LeagueCreate() {
                               </div>
                               {isPending && (
                                 <div className="lc-pos-picker">
-                                  <span>Place in slot:</span>
+                                  <label className="lc-cost-label">
+                                    <span>$</span>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={pendingCost}
+                                      onChange={(e) =>
+                                        setPendingCost(e.target.value)
+                                      }
+                                      className="lc-cost-input"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </label>
+                                  <span>Slot:</span>
                                   {eligible.map((slot) => (
                                     <button
                                       key={slot}
                                       type="button"
                                       onClick={() => {
-                                        addKeeper(player, slot);
+                                        addKeeper(
+                                          player,
+                                          slot,
+                                          parseInt(pendingCost) || 1,
+                                        );
                                         setPendingPlayer(null);
                                       }}
                                     >
@@ -582,26 +653,65 @@ export default function LeagueCreate() {
                               {pos}
                             </div>
 
-                            <div className="league-create-roster-player">
-                              {entry
-                                ? `${entry.keeper.playerName} (${entry.keeper.team})`
-                                : "(EMPTY SLOT)"}
-                            </div>
-
-                            <div className="league-create-roster-cost">
-                              ${entry ? entry.keeper.cost : 0}
-                            </div>
-
                             {entry ? (
-                              <button
-                                type="button"
-                                className="league-create-remove"
-                                onClick={() => removeKeeper(entry.keeperIdx)}
-                              >
-                                REMOVE
-                              </button>
+                              <>
+                                {(() => {
+                                  const p = keeperPlayers.find(
+                                    (kp) =>
+                                      String(kp.id) === entry.keeper.playerId,
+                                  );
+                                  return p?.headshot ? (
+                                    <img
+                                      src={p.headshot}
+                                      alt={entry.keeper.playerName}
+                                      className="lc-keeper-headshot-sm"
+                                    />
+                                  ) : (
+                                    <div className="lc-keeper-init">
+                                      {entry.keeper.playerName
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .slice(0, 2)
+                                        .join("")}
+                                    </div>
+                                  );
+                                })()}
+                                <div className="league-create-roster-player">
+                                  {entry.keeper.playerName}
+                                  <span className="lc-keeper-team">
+                                    {entry.keeper.team}
+                                  </span>
+                                </div>
+                                <label className="lc-keeper-cost-wrap">
+                                  <span>$</span>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={entry.keeper.cost}
+                                    onChange={(e) =>
+                                      updateKeeperCost(
+                                        entry.keeperIdx,
+                                        parseInt(e.target.value) || 1,
+                                      )
+                                    }
+                                    className="lc-cost-input"
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  className="league-create-remove"
+                                  onClick={() => removeKeeper(entry.keeperIdx)}
+                                >
+                                  REMOVE
+                                </button>
+                              </>
                             ) : (
-                              <div className="league-create-empty">—</div>
+                              <>
+                                <div className="league-create-roster-player lc-keeper-empty">
+                                  (EMPTY SLOT)
+                                </div>
+                                <div className="league-create-empty">—</div>
+                              </>
                             )}
                           </div>
                         ))}

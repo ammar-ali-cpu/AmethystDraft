@@ -8,6 +8,12 @@ export type Player = {
   team: string;
   pos: string;
   adp: number;
+  /** Projected auction value (from API) */
+  value?: number;
+  /** URL to MLB headshot */
+  headshot?: string;
+  /** All eligible positions (from API) */
+  positions?: string[];
 };
 export type TeamKeeper = {
   slot: string;

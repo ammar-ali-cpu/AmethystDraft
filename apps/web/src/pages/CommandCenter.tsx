@@ -64,11 +64,13 @@ function DraftLog({
       })),
     [league],
   );
-  const sorted = [...rosterEntries].sort(
-    (a, b) =>
-      new Date(a.acquiredAt ?? a.createdAt ?? 0).getTime() -
-      new Date(b.acquiredAt ?? b.createdAt ?? 0).getTime(),
-  );
+  const sorted = [...rosterEntries]
+    .filter((e) => !e.isKeeper)
+    .sort(
+      (a, b) =>
+        new Date(a.acquiredAt ?? a.createdAt ?? 0).getTime() -
+        new Date(b.acquiredAt ?? b.createdAt ?? 0).getTime(),
+    );
   return (
     <>
       <div className="market-section-label" style={{ marginTop: "1rem" }}>

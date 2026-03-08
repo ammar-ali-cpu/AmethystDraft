@@ -455,6 +455,21 @@
   font-size: 0.74rem;
 }
 
+.ls-kept-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .ls-add-btn {
   width: 26px;
   height: 26px;
@@ -554,7 +569,7 @@
 
 .ls-keeper-row {
   display: grid;
-  grid-template-columns: 30px 1fr 44px auto;
+  grid-template-columns: 30px 28px 1fr auto auto;
   gap: 8px;
   align-items: center;
   padding: 7px 8px;
@@ -573,11 +588,7 @@
   color: #eee7fa;
 }
 
-.ls-keeper-cost {
-  font-size: 0.75rem;
-  color: #a79db5;
-  text-align: right;
-}
+/* Removed static .ls-keeper-cost – replaced with .ls-keeper-cost-wrap + .ls-cost-input */
 
 .ls-remove-btn {
   font-size: 0.7rem;
@@ -628,4 +639,80 @@
 
 .ls-save-btn:hover {
   opacity: 0.88;
+}
+
+/* ── Keeper headshots & cost inputs ─────────────────────── */
+.ls-keeper-headshot {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.ls-keeper-headshot-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.ls-keeper-init {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(170, 83, 247, 0.25);
+  display: grid;
+  place-items: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #e2d9f3;
+  flex-shrink: 0;
+}
+
+.ls-keeper-team {
+  display: block;
+  font-size: 0.68rem;
+  color: #9890a6;
+  margin-top: 1px;
+}
+
+.ls-keeper-empty {
+  color: #4a4460 !important;
+  font-style: italic;
+}
+
+.ls-keeper-cost-wrap,
+.ls-cost-label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ls-keeper-cost-wrap span,
+.ls-cost-label span {
+  font-size: 0.75rem;
+  color: #d5cfdf;
+}
+
+.ls-cost-input {
+  width: 52px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(190, 108, 255, 0.25);
+  border-radius: 6px;
+  color: #f1ebff;
+  font-size: 0.78rem;
+  font-family: inherit;
+  padding: 3px 5px;
+  text-align: right;
+}
+
+.ls-cost-input:focus {
+  outline: none;
+  border-color: rgba(190, 108, 255, 0.6);
+}
+
+.ls-cost-input::-webkit-outer-spin-button,
+.ls-cost-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
 }

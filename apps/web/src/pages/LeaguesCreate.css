@@ -447,6 +447,21 @@
   font-size: 0.76rem;
 }
 
+.league-create-player-kept-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .league-create-player-row button {
   width: 28px;
   height: 28px;
@@ -531,7 +546,7 @@
 
 .league-create-roster-keeper-row {
   display: grid;
-  grid-template-columns: 34px 1fr 54px auto;
+  grid-template-columns: 34px 30px 1fr auto auto;
   gap: 10px;
   align-items: center;
   padding: 8px 10px;
@@ -550,11 +565,7 @@
   font-size: 0.8rem;
 }
 
-.league-create-roster-cost {
-  color: #d5cfdf;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
+/* Removed static .league-create-roster-cost – replaced with .lc-keeper-cost-wrap + .lc-cost-input */
 
 .league-create-remove {
   border: none;
@@ -621,4 +632,89 @@
   .league-create-player-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Keeper headshots & cost inputs ─────────────────────── */
+.lc-keeper-headshot {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.lc-keeper-headshot-sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.lc-keeper-init {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(170, 83, 247, 0.25);
+  display: grid;
+  place-items: center;
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: #e2d9f3;
+  flex-shrink: 0;
+}
+
+.lc-keeper-team {
+  display: block;
+  font-size: 0.7rem;
+  color: #9890a6;
+  margin-top: 1px;
+}
+
+.lc-keeper-empty {
+  color: #4a4460 !important;
+  font-style: italic;
+}
+
+.lc-keeper-cost-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.lc-keeper-cost-wrap span {
+  font-size: 0.78rem;
+  color: #d5cfdf;
+}
+
+.lc-cost-label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.lc-cost-label span {
+  font-size: 0.75rem;
+  color: #9890a6;
+}
+
+.lc-cost-input {
+  width: 52px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(190, 108, 255, 0.25);
+  border-radius: 6px;
+  color: #f1ebff;
+  font-size: 0.78rem;
+  font-family: inherit;
+  padding: 3px 5px;
+  text-align: right;
+}
+
+.lc-cost-input:focus {
+  outline: none;
+  border-color: rgba(190, 108, 255, 0.6);
+}
+
+.lc-cost-input::-webkit-outer-spin-button,
+.lc-cost-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
 }

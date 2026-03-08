@@ -4,7 +4,6 @@ import {
   type Player,
   type TeamKeepersMap,
   rosterDefaults,
-  availablePlayers,
   getEligibleSlots,
 } from "../types/league";
 
@@ -19,6 +18,8 @@ interface UseLeagueFormOptions {
   initialTeamNames?: string[];
   initialKeepers?: TeamKeepersMap;
   initialPosEligibilityThreshold?: number;
+  /** Real API players to use in the keeper picker instead of the static stub */
+  externalPlayers?: Player[];
 }
 
 export function useLeagueForm({
@@ -32,6 +33,7 @@ export function useLeagueForm({
   initialTeamNames,
   initialKeepers,
   initialPosEligibilityThreshold,
+  externalPlayers,
 }: UseLeagueFormOptions = {}) {
   const [leagueName, setLeagueName] = useState(initialName);
   const [teams, setTeams] = useState(initialTeams);
@@ -94,10 +96,10 @@ export function useLeagueForm({
 
   const filteredPlayers = useMemo(
     () =>
-      availablePlayers.filter((p) =>
+      (externalPlayers ?? []).filter((p) =>
         p.name.toLowerCase().includes(playerSearch.toLowerCase()),
       ),
-    [playerSearch],
+    [externalPlayers, playerSearch],
   );
 
   const currentKeepers = teamKeepers[activeKeeperTeam] ?? [];
@@ -107,6 +109,17 @@ export function useLeagueForm({
     totalRosterSpots > 0
       ? Math.round((currentKeepers.length / totalRosterSpots) * 100)
       : 0;
+
+  /** Maps playerId → teamName for every keeper across all teams */
+  const keeperOwnerMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [team, keepers] of Object.entries(teamKeepers)) {
+      for (const k of keepers) {
+        map.set(k.playerId, team);
+      }
+    }
+    return map;
+  }, [teamKeepers]);
 
   const toggleStat = (
     stat: string,
@@ -137,8 +150,9 @@ export function useLeagueForm({
       setActiveKeeperTeam(value || `Team ${index + 1}`);
   };
 
-  const addKeeper = (player: Player, slot: string) => {
+  const addKeeper = (player: Player, slot: string, cost?: number) => {
     const current = teamKeepers[activeKeeperTeam] ?? [];
+    const resolvedCost = cost ?? player.value ?? Math.floor(player.adp * 2 + 10);
     setTeamKeepers({
       ...teamKeepers,
       [activeKeeperTeam]: [
@@ -147,15 +161,27 @@ export function useLeagueForm({
           slot,
           playerName: player.name,
           team: player.team,
-          cost: Math.floor(player.adp * 2 + 10),
+          cost: Math.max(1, Math.round(resolvedCost)),
           playerId: String(player.id),
         },
       ],
     });
   };
 
-  const getEligibleSlotsForPlayer = (player: Player): string[] =>
-    getEligibleSlots(player, rosterSlots, currentKeepers);
+  const updateKeeperCost = (index: number, cost: number) => {
+    const current = teamKeepers[activeKeeperTeam] ?? [];
+    const updated = current.map((k, i) =>
+      i === index ? { ...k, cost: Math.max(1, Math.round(cost)) } : k,
+    );
+    setTeamKeepers({ ...teamKeepers, [activeKeeperTeam]: updated });
+  };
+
+  const getEligibleSlotsForPlayer = (player: Player): string[] => {
+    const ownedByTeam = keeperOwnerMap.get(String(player.id));
+    // Already kept by another team or already kept on this team
+    if (ownedByTeam) return [];
+    return getEligibleSlots(player, rosterSlots, currentKeepers);
+  };
 
   const removeKeeper = (index: number) => {
     const current = teamKeepers[activeKeeperTeam] ?? [];
@@ -198,6 +224,8 @@ export function useLeagueForm({
     updateTeamName,
     addKeeper,
     removeKeeper,
+    updateKeeperCost,
     getEligibleSlotsForPlayer,
+    keeperOwnerMap,
   };
 }
