@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { useParams } from "react-router";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useLeague } from "../contexts/LeagueContext";
@@ -17,6 +18,11 @@ import {
   getStatByCategory,
   computeTeamData,
   computePositionMarket,
+  buildProjectedStandings,
+  LOWER_IS_BETTER_CATS,
+  computeRanks,
+  rankColor,
+  formatStatCell,
 } from "./commandCenterUtils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,6 +142,67 @@ function LeftPanel({
       ),
     [selectedPlayerPosition, allPlayers, draftedIds, rosterEntries],
   );
+
+  const playerMap = useMemo(
+    () => new Map(allPlayers.map((p) => [p.id, p])),
+    [allPlayers],
+  );
+
+  const FALLBACK_CATS = [
+    { name: "HR", type: "batting" as const },
+    { name: "RBI", type: "batting" as const },
+    { name: "SB", type: "batting" as const },
+    { name: "AVG", type: "batting" as const },
+    { name: "W", type: "pitching" as const },
+    { name: "SV", type: "pitching" as const },
+    { name: "ERA", type: "pitching" as const },
+    { name: "WHIP", type: "pitching" as const },
+  ];
+
+  const scoringCats = league?.scoringCategories?.length
+    ? league.scoringCategories
+    : FALLBACK_CATS;
+
+  const [sortCat, setSortCat] = useState<string>("HR");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const projectedStandings = useMemo(
+    () =>
+      buildProjectedStandings(
+        league?.teamNames ?? [],
+        rosterEntries,
+        playerMap,
+        scoringCats,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [league?.teamNames?.join(","), rosterEntries, playerMap, scoringCats],
+  );
+
+  const rankMaps = useMemo(
+    () =>
+      Object.fromEntries(
+        scoringCats.map((c) => [c.name, computeRanks(projectedStandings, c.name)]),
+      ),
+    [projectedStandings, scoringCats],
+  );
+
+  const sortedProjStandings = useMemo(() => {
+    return [...projectedStandings].sort((a, b) => {
+      const diff = (a.stats[sortCat] ?? 0) - (b.stats[sortCat] ?? 0);
+      const ranked = LOWER_IS_BETTER_CATS.has(sortCat.toUpperCase())
+        ? diff
+        : -diff;
+      return sortAsc ? -ranked : ranked;
+    });
+  }, [projectedStandings, sortCat, sortAsc]);
+
+  const toggleSort = (cat: string) => {
+    if (cat === sortCat) setSortAsc((v) => !v);
+    else {
+      setSortCat(cat);
+      setSortAsc(false);
+    }
+  };
 
   return (
     <div className="cc-left">
@@ -372,44 +439,65 @@ function LeftPanel({
 
       {activeTab === "Standings" && (
         <div className="cc-panel-content">
-          <table className="standings-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>TEAM</th>
-                <th>W</th>
-                <th>L</th>
-                <th>PCT</th>
-                <th>GB</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(league?.teamNames ?? []).map((name, i) => (
-                <tr
-                  key={name}
-                  className={name === myTeamName ? "my-team-row" : ""}
-                >
-                  <td className="rank-cell">{i + 1}</td>
-                  <td className="team-name-cell">{name}</td>
-                  <td className="dim">—</td>
-                  <td className="dim">—</td>
-                  <td className="dim">—</td>
-                  <td className="gb-cell dim">—</td>
-                </tr>
-              ))}
-              {!league && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="dim"
-                    style={{ textAlign: "center", padding: "1rem 0" }}
-                  >
-                    No league loaded
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          {rosterEntries.length === 0 ? (
+            <div
+              className="dim"
+              style={{ textAlign: "center", padding: "1.5rem 0" }}
+            >
+              No picks logged yet
+            </div>
+          ) : (
+            <div className="cc-standings-scroll">
+              <table className="lo-standings-table">
+                <thead>
+                  <tr>
+                    <th className="lo-th-team">TEAM</th>
+                    {scoringCats.map((c) => (
+                      <th
+                        key={c.name}
+                        className={
+                          "lo-th-stat" + (sortCat === c.name ? " lo-th-active" : "")
+                        }
+                        onClick={() => toggleSort(c.name)}
+                      >
+                        {c.name}
+                        {sortCat === c.name ? (
+                          sortAsc ? (
+                            <ChevronUp size={10} />
+                          ) : (
+                            <ChevronDown size={10} />
+                          )
+                        ) : null}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedProjStandings.map((row, idx) => (
+                    <tr
+                      key={row.teamName}
+                      className={idx % 2 === 0 ? "lo-tr-even" : ""}
+                    >
+                      <td className="lo-td-team">{row.teamName}</td>
+                      {scoringCats.map((c) => {
+                        const rank = rankMaps[c.name]?.get(row.teamName) ?? 1;
+                        const colorClass = rankColor(
+                          rank,
+                          sortedProjStandings.length,
+                        );
+                        const val = row.stats[c.name] ?? 0;
+                        return (
+                          <td key={c.name} className={`lo-td-stat ${colorClass}`}>
+                            {formatStatCell(c.name, val)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <DraftLog
             rosterEntries={rosterEntries}
             league={league}

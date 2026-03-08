@@ -910,3 +910,39 @@
 .draft-log-list::-webkit-scrollbar { width: 4px; }
 .draft-log-list::-webkit-scrollbar-track { background: transparent; }
 .draft-log-list::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.3); border-radius: 2px; }
+
+.cc-standings-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
+}
+
+.cc-standings-scroll .lo-standings-table .lo-th-team,
+.cc-standings-scroll .lo-standings-table .lo-td-team {
+  position: sticky;
+  left: 0;
+  background: #0a0714;
+  z-index: 2;
+  box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.6), inset -1px 0 0 rgba(139, 92, 246, 0.25);
+}
+
+.cc-standings-scroll .lo-standings-table .lo-th-team {
+  z-index: 3;
+}
+
+.cc-standings-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.cc-standings-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cc-standings-scroll::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.35);
+  border-radius: 2px;
+}
+
+.cc-standings-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.6);
+}

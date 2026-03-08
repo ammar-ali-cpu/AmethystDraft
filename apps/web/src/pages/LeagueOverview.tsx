@@ -8,6 +8,13 @@ import type { Player } from "../types/player";
 import { getPlayers } from "../api/players";
 import { DraftLogRow } from "../components/DraftLogRow";
 import { usePageTitle } from "../hooks/usePageTitle";
+import {
+  buildProjectedStandings,
+  LOWER_IS_BETTER_CATS,
+  formatStatCell,
+  rankColor,
+  computeRanks,
+} from "./commandCenterUtils";
 import "./LeagueOverview.css";
 
 // ─── Slot display order ───────────────────────────────────────────────────────
@@ -45,11 +52,6 @@ interface TeamData {
   budgetRemaining: number;
   bidAvg: number;
   maxBid: number;
-}
-
-interface StandingsRow {
-  teamName: string;
-  stats: Record<string, number>;
 }
 
 // ─── Build team data from real roster entries ─────────────────────────────────
@@ -106,45 +108,20 @@ function buildTeamData(
   };
 }
 
-// ─── Placeholder standings (pre-season — no real stats yet) ──────────────────
+// ─── Standings helpers ────────────────────────────────────────────────────────
 
-const HIT_CATS = ["HR", "RBI", "SB", "AVG"];
-const PIT_CATS = ["W", "SV", "ERA", "WHIP"];
-const ALL_CATS = [...HIT_CATS, ...PIT_CATS];
-const LOWER_IS_BETTER = new Set(["ERA", "WHIP"]);
+const FALLBACK_CATS: { name: string; type: "batting" | "pitching" }[] = [
+  { name: "HR", type: "batting" },
+  { name: "RBI", type: "batting" },
+  { name: "SB", type: "batting" },
+  { name: "AVG", type: "batting" },
+  { name: "W", type: "pitching" },
+  { name: "SV", type: "pitching" },
+  { name: "ERA", type: "pitching" },
+  { name: "WHIP", type: "pitching" },
+];
 
-function buildPlaceholderStandings(teamNames: string[]): StandingsRow[] {
-  return teamNames.map((name) => ({
-    teamName: name,
-    stats: {
-      HR: 0,
-      RBI: 0,
-      SB: 0,
-      AVG: 0.0,
-      W: 0,
-      SV: 0,
-      ERA: 0.0,
-      WHIP: 0.0,
-    },
-  }));
-}
 
-function rankColor(rank: number, total: number): string {
-  const pct = rank / total;
-  if (pct <= 0.33) return "lo-rank-good";
-  if (pct <= 0.66) return "lo-rank-mid";
-  return "lo-rank-bad";
-}
-
-function computeRanks(rows: StandingsRow[], cat: string): Map<string, number> {
-  const sorted = [...rows].sort((a, b) => {
-    const diff = b.stats[cat] - a.stats[cat];
-    return LOWER_IS_BETTER.has(cat) ? -diff : diff;
-  });
-  const ranks = new Map<string, number>();
-  sorted.forEach((r, i) => ranks.set(r.teamName, i + 1));
-  return ranks;
-}
 
 // ─── Team card ────────────────────────────────────────────────────────────────
 
@@ -271,24 +248,45 @@ export default function LeagueOverview() {
     [teamNames, entries, league?.rosterSlots, league?.budget],
   );
 
+  const playerMap = useMemo(
+    () => new Map(allPlayers.map((p) => [p.id, p])),
+    [allPlayers],
+  );
+
+  const scoringCats = useMemo(
+    () =>
+      league?.scoringCategories?.length
+        ? league.scoringCategories
+        : FALLBACK_CATS,
+    [league],
+  );
+
+  const allCatNames = useMemo(
+    () => scoringCats.map((c) => c.name),
+    [scoringCats],
+  );
+
   const standings = useMemo(
-    () => buildPlaceholderStandings(teamNames),
+    () =>
+      buildProjectedStandings(teamNames, entries, playerMap, scoringCats),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [teamNames.join(",")],
+    [teamNames.join(","), entries, playerMap, scoringCats],
   );
 
   const rankMaps = useMemo(
     () =>
       Object.fromEntries(
-        ALL_CATS.map((cat) => [cat, computeRanks(standings, cat)]),
+        allCatNames.map((cat) => [cat, computeRanks(standings, cat)]),
       ),
-    [standings],
+    [standings, allCatNames],
   );
 
   const sortedStandings = useMemo(() => {
     return [...standings].sort((a, b) => {
-      const diff = a.stats[sortCat] - b.stats[sortCat];
-      const ranked = LOWER_IS_BETTER.has(sortCat) ? diff : -diff;
+      const diff = (a.stats[sortCat] ?? 0) - (b.stats[sortCat] ?? 0);
+      const ranked = LOWER_IS_BETTER_CATS.has(sortCat.toUpperCase())
+        ? diff
+        : -diff;
       return sortAsc ? -ranked : ranked;
     });
   }, [standings, sortCat, sortAsc]);
@@ -315,11 +313,6 @@ export default function LeagueOverview() {
       showToast("Failed to remove pick", "error");
     }
   };
-
-  const playerMap = useMemo(
-    () => new Map(allPlayers.map((p) => [p.id, p])),
-    [allPlayers],
-  );
 
   const slotOptions = useMemo(
     () => (league?.rosterSlots ? Object.keys(league.rosterSlots) : []),
@@ -397,7 +390,7 @@ export default function LeagueOverview() {
           <div className="lo-section-header">
             <span className="lo-section-title">STANDINGS</span>
             <span className="lo-section-meta">
-              pre-season · click column to sort
+              pre-season projections · click column to sort
             </span>
           </div>
 
@@ -406,7 +399,7 @@ export default function LeagueOverview() {
               <thead>
                 <tr>
                   <th className="lo-th-team">TEAM</th>
-                  {ALL_CATS.map((cat) => (
+                  {allCatNames.map((cat) => (
                     <th
                       key={cat}
                       className={
@@ -433,19 +426,13 @@ export default function LeagueOverview() {
                     className={idx % 2 === 0 ? "lo-tr-even" : ""}
                   >
                     <td className="lo-td-team">{row.teamName}</td>
-                    {ALL_CATS.map((cat) => {
-                      const rank = rankMaps[cat].get(row.teamName) ?? 1;
+                    {allCatNames.map((cat) => {
+                      const rank = rankMaps[cat]?.get(row.teamName) ?? 1;
                       const colorClass = rankColor(rank, teamNames.length);
-                      const val = row.stats[cat];
-                      const display =
-                        cat === "AVG"
-                          ? val.toFixed(3)
-                          : cat === "ERA" || cat === "WHIP"
-                            ? val.toFixed(2)
-                            : String(val);
+                      const val = row.stats[cat] ?? 0;
                       return (
                         <td key={cat} className={`lo-td-stat ${colorClass}`}>
-                          {display}
+                          {formatStatCell(cat, val)}
                         </td>
                       );
                     })}
