@@ -322,6 +322,20 @@
 
 .pac-stat-value.green { color: #22c55e; }
 
+.pac-indicator {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pac-indicator--steal { background: rgba(34,197,94,0.18); color: #22c55e; }
+.pac-indicator--reach { background: rgba(248,113,113,0.18); color: #f87171; }
+.pac-indicator--fair  { background: rgba(148,163,184,0.15); color: #94a3b8; }
+
 .pac-tier-badge {
   display: inline-flex;
   align-items: center;

@@ -8,6 +8,7 @@ import type { Player } from "../types/player";
 import { addRosterEntry, removeRosterEntry } from "../api/roster";
 import type { RosterEntry } from "../api/roster";
 import { getStatByCategory } from "../pages/commandCenterUtils";
+import { getValuation, type ValuationResult } from "../api/engine";
 
 interface AuctionCenterProps {
   rosterEntries: RosterEntry[];
@@ -35,6 +36,18 @@ export function AuctionCenter({
   const { token } = useAuth();
   const { isInWatchlist } = useWatchlist();
   const { getNote, setNote } = usePlayerNotes();
+
+  const [valuationMap, setValuationMap] = useState<Map<string, ValuationResult>>(new Map());
+
+  // Fetch (and re-fetch after each pick) engine valuations — best-effort, never blocks the UI
+  useEffect(() => {
+    if (!leagueId || !token) return;
+    getValuation(leagueId, token)
+      .then((res) =>
+        setValuationMap(new Map(res.valuations.map((v) => [v.player_id, v])))
+      )
+      .catch(() => {});
+  }, [leagueId, token, rosterEntries.length]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -509,6 +522,32 @@ export function AuctionCenter({
                     ${selectedPlayer.value}
                   </span>
                 </div>
+                {(() => {
+                  const v = valuationMap.get(selectedPlayer.id);
+                  if (!v) return null;
+                  const cls =
+                    v.indicator === "Steal"
+                      ? "steal"
+                      : v.indicator === "Reach"
+                        ? "reach"
+                        : "fair";
+                  return (
+                    <>
+                      <div className="pac-stat">
+                        <span className="pac-stat-label">Adj $</span>
+                        <span className="pac-stat-value green">
+                          ${v.adjusted_value}
+                        </span>
+                      </div>
+                      <div className="pac-stat">
+                        <span className="pac-stat-label">Signal</span>
+                        <span className={`pac-indicator pac-indicator--${cls}`}>
+                          {v.indicator}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
                 <div className="pac-stat">
                   <span className="pac-stat-label">ADP</span>
                   <span className="pac-stat-value">{selectedPlayer.adp}</span>
