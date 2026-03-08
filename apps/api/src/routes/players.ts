@@ -14,11 +14,9 @@ interface MlbPlayer {
   birthDate?: string;
 }
 
-interface MlbTransaction {
-  person?: { id: number };
-  typeCode?: string;
-  effectiveDate?: string;
-  resolutionDate?: string;
+interface RosterEntry {
+  person: { id: number; fullName: string };
+  status?: { code: string; description: string };
 }
 
 interface MlbStatSplit {
@@ -333,13 +331,7 @@ const getPlayers: RequestHandler = async (
     const season2 = season - 1;
     const season3 = season - 2;
 
-    // Date range for injury transactions (last 90 days)
-    const today = new Date();
-    const ninetyDaysAgo = new Date(today);
-    ninetyDaysAgo.setDate(today.getDate() - 90);
-    const fmtDate = (d: Date) => d.toISOString().split("T")[0];
-
-    // Fetch 3 seasons of stats + spring training + transactions in parallel
+    // Fetch 3 seasons of stats + spring training in parallel
     const [
       batRes,
       pitRes,
@@ -349,7 +341,6 @@ const getPlayers: RequestHandler = async (
       pit3Res,
       batSpringRes,
       pitSpringRes,
-      txRes,
     ] = await Promise.all([
       fetch(
         `${MLB_API}/stats?stats=season&group=hitting&season=${season}&playerPool=ALL&limit=400&sportId=1`,
@@ -374,9 +365,6 @@ const getPlayers: RequestHandler = async (
       ),
       fetch(
         `${MLB_API}/stats?stats=season&group=pitching&season=${currentYear}&playerPool=ALL&limit=300&sportId=1&gameType=S`,
-      ),
-      fetch(
-        `${MLB_API}/transactions?sportId=1&startDate=${fmtDate(ninetyDaysAgo)}&endDate=${fmtDate(today)}`,
       ),
     ]);
 
@@ -423,38 +411,37 @@ const getPlayers: RequestHandler = async (
     const batSpringMap = buildStatMap(batSpringSplits);
     const pitSpringMap = buildStatMap(pitSpringSplits);
 
-    // Parse transactions → injury status map
-    const IL_CODES = new Set(["IL10", "IL15", "IL60", "DL10", "DL15", "DL60"]);
-    const ACT_CODES = new Set(["ACT", "OUTRTS"]);
-    let txJson: { transactions?: MlbTransaction[] } = {};
+    // Build injury status map from 40-man roster status codes across all 30 teams.
+    // D10/D15/D60 = IL placements (works year-round, including spring training).
+    const MLB_TEAM_IDS = [
+      108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 133,
+      134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 158,
+    ];
+    const IL_STATUS_MAP: Record<string, string> = {
+      D10: "IL10",
+      D15: "IL15",
+      D60: "IL60",
+      D7: "IL7",
+    };
+    const injuryStatusMap = new Map<number, string>();
     try {
-      txJson = (await txRes.json()) as { transactions?: MlbTransaction[] };
+      const rosterResults = await Promise.all(
+        MLB_TEAM_IDS.map((id) =>
+          fetch(
+            `${MLB_API}/teams/${id}/roster?rosterType=40Man&season=${currentYear}`,
+          ).then((r) => r.json() as Promise<{ roster?: RosterEntry[] }>),
+        ),
+      );
+      for (const rj of rosterResults) {
+        for (const entry of rj.roster ?? []) {
+          const code = entry.status?.code;
+          if (code && IL_STATUS_MAP[code]) {
+            injuryStatusMap.set(entry.person.id, IL_STATUS_MAP[code]);
+          }
+        }
+      }
     } catch {
       /* best-effort */
-    }
-    const ilPlacement = new Map<number, string>(); // playerId → typeCode (most recent IL)
-    const ilPlacementDate = new Map<number, string>();
-    const actDate = new Map<number, string>();
-    for (const tx of txJson.transactions ?? []) {
-      const pid = tx.person?.id;
-      if (!pid || !tx.typeCode || !tx.effectiveDate) continue;
-      if (IL_CODES.has(tx.typeCode)) {
-        const existing = ilPlacementDate.get(pid);
-        if (!existing || tx.effectiveDate > existing) {
-          ilPlacement.set(pid, tx.typeCode);
-          ilPlacementDate.set(pid, tx.effectiveDate);
-        }
-      } else if (ACT_CODES.has(tx.typeCode)) {
-        const existing = actDate.get(pid);
-        if (!existing || tx.effectiveDate > existing)
-          actDate.set(pid, tx.effectiveDate);
-      }
-    }
-    const injuryStatusMap = new Map<number, string>();
-    for (const [pid, code] of ilPlacement) {
-      const act = actDate.get(pid);
-      const placed = ilPlacementDate.get(pid)!;
-      if (!act || placed > act) injuryStatusMap.set(pid, code);
     }
 
     // Fetch player bio info (age, position) for batters

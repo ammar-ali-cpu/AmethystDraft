@@ -380,6 +380,20 @@ export default function PlayerTable({
       return false;
     }
   });
+  const [injuryFilter, setInjuryFilter] = useState<
+    "all" | "healthy" | "injured"
+  >(() => {
+    try {
+      return (
+        (localStorage.getItem("amethyst-pt-injury") as
+          | "all"
+          | "healthy"
+          | "injured") ?? "all"
+      );
+    } catch {
+      return "all";
+    }
+  });
   const [availabilityFilter, setAvailabilityFilter] = useState<
     "all" | "available" | "drafted"
   >(() => {
@@ -439,6 +453,13 @@ export default function PlayerTable({
       /* noop */
     }
   }, [starredOnly]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("amethyst-pt-injury", injuryFilter);
+    } catch {
+      /* noop */
+    }
+  }, [injuryFilter]);
   useEffect(() => {
     try {
       localStorage.setItem("amethyst-pt-availability", availabilityFilter);
@@ -572,6 +593,9 @@ export default function PlayerTable({
       base = base.filter((p) => !draftedIds?.has(p.id));
     else if (availabilityFilter === "drafted")
       base = base.filter((p) => draftedIds?.has(p.id));
+    if (injuryFilter === "healthy") base = base.filter((p) => !p.injuryStatus);
+    else if (injuryFilter === "injured")
+      base = base.filter((p) => !!p.injuryStatus);
     if (statView === "hitting") base = base.filter((p) => !playerIsPitcher(p));
     else if (statView === "pitching")
       base = base.filter((p) => playerIsPitcher(p));
@@ -579,6 +603,7 @@ export default function PlayerTable({
   }, [
     players,
     starredOnly,
+    injuryFilter,
     availabilityFilter,
     draftedIds,
     statView,
@@ -731,6 +756,18 @@ export default function PlayerTable({
             ))}
           </select>
 
+          <select
+            className="pt-select"
+            value={injuryFilter}
+            onChange={(e) =>
+              setInjuryFilter(e.target.value as "all" | "healthy" | "injured")
+            }
+          >
+            <option value="all">Health (All)</option>
+            <option value="healthy">Healthy only</option>
+            <option value="injured">Injured only</option>
+          </select>
+
           <button
             className={"pt-toggle " + (starredOnly ? "active" : "")}
             onClick={() => setStarredOnly((v) => !v)}
@@ -779,6 +816,7 @@ export default function PlayerTable({
               onPositionChange("all");
               setSelectedTags(new Set());
               setAvailabilityFilter("all");
+              setInjuryFilter("all");
               setStatView("all");
             }}
           >

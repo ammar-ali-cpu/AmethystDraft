@@ -7,18 +7,25 @@ interface PlayersResponse {
   count: number;
 }
 
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const playersCache = new Map<string, Player[]>();
+const playersCacheTime = new Map<string, number>();
 
 export function getPlayersCached(
   sortBy: "adp" | "value" | "name" = "value",
 ): Player[] | null {
-  return playersCache.get(sortBy) ?? null;
+  const ts = playersCacheTime.get(sortBy);
+  if (ts && Date.now() - ts < CACHE_TTL_MS) {
+    return playersCache.get(sortBy) ?? null;
+  }
+  return null;
 }
 
 export async function getPlayers(
   sortBy: "adp" | "value" | "name" = "value",
 ): Promise<Player[]> {
-  if (playersCache.has(sortBy)) {
+  const ts = playersCacheTime.get(sortBy);
+  if (ts && Date.now() - ts < CACHE_TTL_MS && playersCache.has(sortBy)) {
     return playersCache.get(sortBy)!;
   }
   const query = new URLSearchParams({ sortBy });
@@ -31,5 +38,6 @@ export async function getPlayers(
   }
   const players = data.players ?? [];
   playersCache.set(sortBy, players);
+  playersCacheTime.set(sortBy, Date.now());
   return players;
 }
