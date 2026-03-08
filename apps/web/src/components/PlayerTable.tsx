@@ -12,8 +12,6 @@ interface PlayerTableProps {
   onSearchChange: (query: string) => void;
   positionFilter: string;
   onPositionChange: (position: string) => void;
-  sortBy: string;
-  onSortChange: (sort: string) => void;
   statBasis?: StatBasis;
   onStatBasisChange?: (basis: StatBasis) => void;
   onPlayerClick?: (player: Player) => void;
@@ -316,14 +314,28 @@ function getDisplayStatValue(
   }
 }
 
+function SortArrow({
+  col,
+  sort,
+}: {
+  col: string;
+  sort: { col: string; dir: "asc" | "desc" } | null;
+}) {
+  if (sort?.col !== col)
+    return <span className="th-sort-icon th-sort-idle">↕</span>;
+  return (
+    <span className="th-sort-icon th-sort-active">
+      {sort.dir === "asc" ? "▲" : "▼"}
+    </span>
+  );
+}
+
 export default function PlayerTable({
   players,
   searchQuery,
   onSearchChange,
   positionFilter,
   onPositionChange,
-  sortBy,
-  onSortChange,
   statBasis = "projections",
   onStatBasisChange,
   onPlayerClick,
@@ -333,13 +345,41 @@ export default function PlayerTable({
   draftedIds,
 }: PlayerTableProps) {
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
-  const [starredOnly, setStarredOnly] = useState(false);
+  const [starredOnly, setStarredOnly] = useState<boolean>(() => {
+    try { return localStorage.getItem("amethyst-pt-starred") === "true"; } catch { return false; }
+  });
   const [availabilityFilter, setAvailabilityFilter] = useState<
     "all" | "available" | "drafted"
-  >("all");
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  >(() => {
+    try { return (localStorage.getItem("amethyst-pt-availability") as "all" | "available" | "drafted") ?? "all"; } catch { return "all"; }
+  });
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem("amethyst-pt-tags");
+      return s ? new Set(JSON.parse(s) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const tagDropdownRef = useRef<HTMLDivElement>(null);
+  const [clientSort, setClientSort] = useState<{ col: string; dir: "asc" | "desc" }>(() => {
+    try {
+      const s = localStorage.getItem("amethyst-pt-sort");
+      return s ? (JSON.parse(s) as { col: string; dir: "asc" | "desc" }) : { col: "adp", dir: "asc" };
+    } catch { return { col: "adp", dir: "asc" }; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("amethyst-pt-starred", String(starredOnly)); } catch { /* noop */ }
+  }, [starredOnly]);
+  useEffect(() => {
+    try { localStorage.setItem("amethyst-pt-availability", availabilityFilter); } catch { /* noop */ }
+  }, [availabilityFilter]);
+  useEffect(() => {
+    try { localStorage.setItem("amethyst-pt-tags", JSON.stringify([...selectedTags])); } catch { /* noop */ }
+  }, [selectedTags]);
+  useEffect(() => {
+    try { localStorage.setItem("amethyst-pt-sort", JSON.stringify(clientSort)); } catch { /* noop */ }
+  }, [clientSort]);
 
   const ALL_TAGS = ["HR+", "SB+", "AVG+", "R+", "RBI+", "K+", "W+", "SV+"];
 
@@ -362,6 +402,15 @@ export default function PlayerTable({
       if (next.has(tag)) next.delete(tag);
       else next.add(tag);
       return next;
+    });
+  }
+
+  function handleColSort(col: string) {
+    setClientSort((prev) => {
+      if (prev?.col === col)
+        return { col, dir: prev.dir === "asc" ? "desc" : "asc" };
+      const defaultAsc = col === "adp" || col === "tier";
+      return { col, dir: defaultAsc ? "asc" : "desc" };
     });
   }
 
@@ -451,10 +500,50 @@ export default function PlayerTable({
     [allRowData, selectedTags],
   );
 
+  const sortedRowData = useMemo(() => {
+    const { col, dir } = clientSort;
+    const mult = dir === "asc" ? 1 : -1;
+    return [...filteredRowData].sort((a, b) => {
+      if (col === "adp") return mult * (a.player.adp - b.player.adp);
+      if (col === "value") return mult * (a.player.value - b.player.value);
+      if (col === "tier") return mult * (a.player.tier - b.player.tier);
+      if (col === "valdiff") return mult * (a.valDiff - b.valDiff);
+      if (col.startsWith("stat-")) {
+        const i = parseInt(col.slice(5));
+        const aStat = a.isBatter ? batCols[i] : pitCols[i];
+        const bStat = b.isBatter ? batCols[i] : pitCols[i];
+        const aRaw = aStat
+          ? getDisplayStatValue(
+              aStat,
+              a.isBatter ? "batting" : "pitching",
+              a.bat,
+              a.pit,
+              a.player,
+            )
+          : "-";
+        const bRaw = bStat
+          ? getDisplayStatValue(
+              bStat,
+              b.isBatter ? "batting" : "pitching",
+              b.bat,
+              b.pit,
+              b.player,
+            )
+          : "-";
+        const aP = parseFloat(aRaw);
+        const bP = parseFloat(bRaw);
+        return (
+          mult * ((isNaN(aP) ? -Infinity : aP) - (isNaN(bP) ? -Infinity : bP))
+        );
+      }
+      return 0;
+    });
+  }, [filteredRowData, clientSort, batCols, pitCols]);
+
   const rowData = useMemo(
     () =>
-      fullyRendered ? filteredRowData : filteredRowData.slice(0, INITIAL_ROWS),
-    [filteredRowData, fullyRendered],
+      fullyRendered ? sortedRowData : sortedRowData.slice(0, INITIAL_ROWS),
+    [sortedRowData, fullyRendered],
   );
 
   return (
@@ -501,16 +590,6 @@ export default function PlayerTable({
             ))}
           </select>
 
-          <select
-            className="pt-select"
-            value={sortBy}
-            onChange={(e) => onSortChange(e.target.value)}
-          >
-            <option value="value">Sort: Value</option>
-            <option value="adp">Sort: ADP</option>
-            <option value="name">Sort: Name</option>
-          </select>
-
           <button
             className={"pt-toggle " + (starredOnly ? "active" : "")}
             onClick={() => setStarredOnly((v) => !v)}
@@ -518,26 +597,6 @@ export default function PlayerTable({
             <Star size={13} fill={starredOnly ? "#fbbf24" : "none"} />
             Starred only
           </button>
-
-          {onStatBasisChange && (
-            <div className="pt-basis-pills">
-              {(["projections", "last-year", "3-year-avg"] as const).map(
-                (b) => (
-                  <button
-                    key={b}
-                    className={"pt-pill " + (statBasis === b ? "active" : "")}
-                    onClick={() => onStatBasisChange(b)}
-                  >
-                    {b === "projections"
-                      ? "PROJ"
-                      : b === "last-year"
-                        ? "2025"
-                        : "3YR"}
-                  </button>
-                ),
-              )}
-            </div>
-          )}
 
           <div className="pt-tag-wrap">
             <button
@@ -584,6 +643,19 @@ export default function PlayerTable({
             <RotateCcw size={14} />
           </button>
         </div>
+        {onStatBasisChange && (
+          <div className="pt-basis-pills">
+            {(["projections", "last-year", "3-year-avg"] as const).map((b) => (
+              <button
+                key={b}
+                className={"pt-pill " + (statBasis === b ? "active" : "")}
+                onClick={() => onStatBasisChange(b)}
+              >
+                {b === "projections" ? "PROJ" : b === "last-year" ? "2025" : "3YR"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Table ── */}
@@ -596,17 +668,29 @@ export default function PlayerTable({
               <th className="th-player">Player</th>
               <th className="th-pos">Pos</th>
               <th className="th-team">Team</th>
-              <th className="th-tier">Tier</th>
-              <th className="th-adp">ADP</th>
-              <th className="th-value">Proj $</th>
-              <th className="th-valdiff">Val Diff</th>
+              <th className="th-tier th-sortable" onClick={() => handleColSort("tier")}>
+                Tier <SortArrow col="tier" sort={clientSort} />
+              </th>
+              <th className="th-adp th-sortable" onClick={() => handleColSort("adp")}>
+                ADP <SortArrow col="adp" sort={clientSort} />
+              </th>
+              <th className="th-value th-sortable" onClick={() => handleColSort("value")}>
+                Proj $ <SortArrow col="value" sort={clientSort} />
+              </th>
+              <th className="th-valdiff th-sortable" onClick={() => handleColSort("valdiff")}>
+                Val Diff <SortArrow col="valdiff" sort={clientSort} />
+              </th>
               {Array.from({ length: numStatCols }, (_, i) => {
                 const b = batCols[i];
                 const p = pitCols[i];
                 const label = b && p ? `${b}/${p}` : (b ?? p ?? "");
                 return (
-                  <th key={i} className={i === 0 ? "th-avg" : "th-stat"}>
-                    {label}
+                  <th
+                    key={i}
+                    className={`${i === 0 ? "th-avg" : "th-stat"} th-sortable`}
+                    onClick={() => handleColSort(`stat-${i}`)}
+                  >
+                    {label} <SortArrow col={`stat-${i}`} sort={clientSort} />
                   </th>
                 );
               })}

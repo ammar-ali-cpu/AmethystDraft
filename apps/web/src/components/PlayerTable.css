@@ -326,6 +326,7 @@
 .pt-basis-pills {
   display: flex;
   gap: 0.25rem;
+  margin-left: auto;
 }
 
 .pt-pill {
@@ -361,6 +362,22 @@
 }
 
 .pt-icon-btn:hover { color: #a78bfa; }
+
+.th-sortable { cursor: pointer; }
+.th-sortable:hover { color: #a78bfa; }
+
+.th-sort-icon {
+  display: inline-block;
+  margin-left: 0.3rem;
+  font-size: 0.55rem;
+  vertical-align: middle;
+  line-height: 1;
+  position: relative;
+  top: -1px;
+}
+.th-sort-idle { color: #2e2048; }
+.th-sort-active { color: #a78bfa; font-size: 0.6rem; }
+.th-sortable:hover .th-sort-idle { color: #5a3d8a; }
 
 /* ── Table scroll ── */
 .pt-scroll {

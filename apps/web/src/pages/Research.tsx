@@ -22,16 +22,21 @@ export default function Research() {
   const { getNote, setNote } = usePlayerNotes();
   const [selectedView, setSelectedView] = useState("player-database");
   const [searchQuery, setSearchQuery] = useState("");
-  const [positionFilter, setPositionFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("adp");
+  const [positionFilter, setPositionFilter] = useState(() => {
+    try { return localStorage.getItem("amethyst-research-position") ?? "all"; } catch { return "all"; }
+  });
   const [statBasis, setStatBasis] = useState<
     "projections" | "last-year" | "3-year-avg"
-  >("projections");
+  >(() => {
+    try {
+      return (localStorage.getItem("amethyst-research-statbasis") as "projections" | "last-year" | "3-year-avg") ?? "projections";
+    } catch { return "projections"; }
+  });
   const [players, setPlayers] = useState<Player[]>(
-    () => getPlayersCached(sortBy as "adp" | "value" | "name") ?? [],
+    () => getPlayersCached("adp") ?? [],
   );
   const [isLoadingPlayers, setIsLoadingPlayers] = useState(
-    () => getPlayersCached(sortBy as "adp" | "value" | "name") === null,
+    () => getPlayersCached("adp") === null,
   );
   const [playersError, setPlayersError] = useState("");
   const [draftedIds, setDraftedIds] = useState<Set<string>>(new Set());
@@ -44,15 +49,20 @@ export default function Research() {
   }, [leagueId, token]);
 
   useEffect(() => {
+    try { localStorage.setItem("amethyst-research-position", positionFilter); } catch { /* noop */ }
+  }, [positionFilter]);
+  useEffect(() => {
+    try { localStorage.setItem("amethyst-research-statbasis", statBasis); } catch { /* noop */ }
+  }, [statBasis]);
+
+  useEffect(() => {
     const loadPlayers = async () => {
-      const cached = getPlayersCached(sortBy as "adp" | "value" | "name");
+      const cached = getPlayersCached("adp");
       if (!cached) setIsLoadingPlayers(true);
       setPlayersError("");
 
       try {
-        const playersFromApi = await getPlayers(
-          sortBy as "adp" | "value" | "name",
-        );
+        const playersFromApi = await getPlayers("adp");
         setPlayers(playersFromApi);
       } catch (err) {
         setPlayersError(
@@ -66,7 +76,7 @@ export default function Research() {
     if (selectedView === "player-database") {
       void loadPlayers();
     }
-  }, [selectedView, sortBy]);
+  }, [selectedView]);
 
   const filteredPlayers = useMemo(() => {
     return players.filter((player) => {
@@ -125,8 +135,6 @@ export default function Research() {
                   onSearchChange={setSearchQuery}
                   positionFilter={positionFilter}
                   onPositionChange={setPositionFilter}
-                  sortBy={sortBy}
-                  onSortChange={setSortBy}
                   statBasis={statBasis}
                   onStatBasisChange={setStatBasis}
                   onPlayerClick={handlePlayerClick}
