@@ -494,7 +494,13 @@ export function AuctionCenter({
           <div className="cc-empty-sub">
             Search for a player above to begin the auction
           </div>
-          <div className="pac-notes-wrap pac-notes-wrap--fill cc-empty-notes">
+          <div
+            className="pac-notes-wrap pac-notes-wrap--fill cc-empty-notes"
+            style={{
+              borderTop: "1px solid rgba(190, 108, 255, 0.15)",
+              paddingTop: "1rem",
+            }}
+          >
             <div className="pac-notes-label">DRAFT NOTES</div>
             <textarea
               className="pac-notes pac-notes--fill"
@@ -772,20 +778,6 @@ export function AuctionCenter({
             </>
           )}
 
-          {/* Draft notes */}
-          <div
-            className="pac-notes-wrap pac-notes-wrap--fill"
-            style={{ marginTop: "1rem" }}
-          >
-            <div className="pac-notes-label">DRAFT NOTES</div>
-            <textarea
-              className="pac-notes pac-notes--fill"
-              value={getNote("__draft__")}
-              onChange={(e) => setNote("__draft__", e.target.value)}
-              placeholder="Pre-draft strategic notes..."
-            />
-          </div>
-
           {/* Log result */}
           <div className="pac-section-label pac-log-result-label">
             LOG RESULT
@@ -844,6 +836,24 @@ export function AuctionCenter({
           >
             {submitting ? "Logging…" : "Log Result"}
           </button>
+
+          {/* Draft notes */}
+          <div
+            className="pac-notes-wrap pac-notes-wrap--fill"
+            style={{
+              marginTop: "1rem",
+              borderTop: "1px solid rgba(190, 108, 255, 0.15)",
+              paddingTop: "1rem",
+            }}
+          >
+            <div className="pac-notes-label">DRAFT NOTES</div>
+            <textarea
+              className="pac-notes pac-notes--fill"
+              value={getNote("__draft__")}
+              onChange={(e) => setNote("__draft__", e.target.value)}
+              placeholder="Pre-draft strategic notes..."
+            />
+          </div>
         </div>
       )}
     </div>
