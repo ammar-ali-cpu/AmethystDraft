@@ -25,6 +25,7 @@ import {
   rankColor,
   formatStatCell,
   teamCanBid,
+  normalizeCatName,
 } from "./commandCenterUtils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,9 +163,9 @@ function LeftPanel({
     { name: "WHIP", type: "pitching" as const },
   ];
 
-  const scoringCats = league?.scoringCategories?.length
-    ? league.scoringCategories
-    : FALLBACK_CATS;
+  const scoringCats = (
+    league?.scoringCategories?.length ? league.scoringCategories : FALLBACK_CATS
+  ).map((c) => ({ ...c, name: normalizeCatName(c.name) }));
 
   const [sortCat, setSortCat] = useState<string>("HR");
   const [sortAsc, setSortAsc] = useState(false);
@@ -537,220 +538,229 @@ function LeftPanel({
       )}
 
       {activeTab === "Teams" && (
-        <div className="cc-panel-content">
-          <table className="teams-table">
-            <thead>
-              <tr>
-                {(
-                  [
-                    ["name", "TEAM"],
-                    ["remaining", "$ LEFT"],
-                    ["spent", "SPENT"],
-                    ["open", "OPEN"],
-                    ["maxBid", "MAX"],
-                  ] as [TeamCol, string][]
-                ).map(([col, label]) => (
-                  <th
-                    key={col}
-                    className="liq-th-sortable"
-                    onClick={() => toggleTeamSort(col)}
-                  >
-                    {label}
-                    {teamSort.col === col ? (
-                      <span className="th-sort-icon th-sort-active">
-                        {teamSort.dir === "asc" ? "▲" : "▼"}
-                      </span>
-                    ) : (
-                      <span className="th-sort-icon th-sort-idle">↕</span>
-                    )}
-                  </th>
-                ))}
-                <th style={{ width: 24 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {teamData.length > 0 ? (
-                [...teamData]
-                  .sort((a, b) => {
-                    const { col, dir } = teamSort;
-                    const av = a[col as keyof TeamSummary];
-                    const bv = b[col as keyof TeamSummary];
-                    const diff =
-                      typeof av === "string"
-                        ? (av as string).localeCompare(bv as string)
-                        : (av as number) - (bv as number);
-                    return dir === "asc" ? diff : -diff;
-                  })
-                  .map((t) => {
-                    const expanded = expandedTeams.has(t.name);
-                    const slots = teamSlotMap.get(t.name) ?? [];
-                    return (
-                      <>
-                        <tr
-                          key={t.name}
-                          className={
-                            (t.name === myTeamName ? "my-team-row" : "") +
-                            " teams-table-row"
-                          }
-                          onClick={() => toggleTeamExpand(t.name)}
-                        >
-                          <td className="team-name-cell">{t.name}</td>
-                          <td>${t.remaining}</td>
-                          <td>${t.spent}</td>
-                          <td>{t.open}</td>
-                          <td className="green">${t.maxBid}</td>
-                          <td className="teams-expand-icon">
-                            {expanded ? (
-                              <ChevronUp size={11} />
-                            ) : (
-                              <ChevronDown size={11} />
-                            )}
-                          </td>
-                        </tr>
-                        {expanded && (
+        <div className="cc-panel-content cc-panel-content--log">
+          <div className="cc-panel-above-log">
+            <table className="teams-table">
+              <thead>
+                <tr>
+                  {(
+                    [
+                      ["name", "TEAM"],
+                      ["remaining", "$ LEFT"],
+                      ["spent", "SPENT"],
+                      ["open", "OPEN"],
+                      ["maxBid", "MAX"],
+                    ] as [TeamCol, string][]
+                  ).map(([col, label]) => (
+                    <th
+                      key={col}
+                      className="liq-th-sortable"
+                      onClick={() => toggleTeamSort(col)}
+                    >
+                      {label}
+                      {teamSort.col === col ? (
+                        <span className="th-sort-icon th-sort-active">
+                          {teamSort.dir === "asc" ? "▲" : "▼"}
+                        </span>
+                      ) : (
+                        <span className="th-sort-icon th-sort-idle">↕</span>
+                      )}
+                    </th>
+                  ))}
+                  <th style={{ width: 24 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {teamData.length > 0 ? (
+                  [...teamData]
+                    .sort((a, b) => {
+                      const { col, dir } = teamSort;
+                      const av = a[col as keyof TeamSummary];
+                      const bv = b[col as keyof TeamSummary];
+                      const diff =
+                        typeof av === "string"
+                          ? (av as string).localeCompare(bv as string)
+                          : (av as number) - (bv as number);
+                      return dir === "asc" ? diff : -diff;
+                    })
+                    .map((t) => {
+                      const expanded = expandedTeams.has(t.name);
+                      const slots = teamSlotMap.get(t.name) ?? [];
+                      return (
+                        <>
                           <tr
-                            key={t.name + "-slots"}
-                            className="teams-slots-row"
+                            key={t.name}
+                            className={
+                              (t.name === myTeamName ? "my-team-row" : "") +
+                              " teams-table-row"
+                            }
+                            onClick={() => toggleTeamExpand(t.name)}
                           >
-                            <td colSpan={6} className="teams-slots-cell">
-                              <div className="teams-slots-list">
-                                {slots.map((slot, i) => (
-                                  <div
-                                    key={`${slot.position}-${i}`}
-                                    className={
-                                      "lo-slot-row" +
-                                      (slot.playerName
-                                        ? " lo-slot-filled"
-                                        : "") +
-                                      (slot.isKeeper ? " lo-slot-keeper" : "")
-                                    }
-                                  >
-                                    <PosBadge pos={slot.position} />
-                                    {slot.playerName ? (
-                                      <span className="lo-slot-player">
-                                        {slot.playerName}
-                                        {slot.playerTeam && (
-                                          <span className="lo-slot-team">
-                                            {" "}
-                                            · {slot.playerTeam}
-                                          </span>
-                                        )}
-                                      </span>
-                                    ) : (
-                                      <span className="lo-slot-empty">
-                                        — empty —
-                                      </span>
-                                    )}
-                                    {slot.price !== null && (
-                                      <span className="lo-slot-price">
-                                        ${slot.price}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
+                            <td className="team-name-cell">{t.name}</td>
+                            <td>${t.remaining}</td>
+                            <td>${t.spent}</td>
+                            <td>{t.open}</td>
+                            <td className="green">${t.maxBid}</td>
+                            <td className="teams-expand-icon">
+                              {expanded ? (
+                                <ChevronUp size={11} />
+                              ) : (
+                                <ChevronDown size={11} />
+                              )}
                             </td>
                           </tr>
-                        )}
-                      </>
-                    );
-                  })
-              ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="dim"
-                    style={{ textAlign: "center", padding: "1rem 0" }}
-                  >
-                    {league ? "No teams yet" : "No league loaded"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                          {expanded && (
+                            <tr
+                              key={t.name + "-slots"}
+                              className="teams-slots-row"
+                            >
+                              <td colSpan={6} className="teams-slots-cell">
+                                <div className="teams-slots-list">
+                                  {slots.map((slot, i) => (
+                                    <div
+                                      key={`${slot.position}-${i}`}
+                                      className={
+                                        "lo-slot-row" +
+                                        (slot.playerName
+                                          ? " lo-slot-filled"
+                                          : "") +
+                                        (slot.isKeeper ? " lo-slot-keeper" : "")
+                                      }
+                                    >
+                                      <PosBadge pos={slot.position} />
+                                      {slot.playerName ? (
+                                        <span className="lo-slot-player">
+                                          {slot.playerName}
+                                          {slot.playerTeam && (
+                                            <span className="lo-slot-team">
+                                              {" "}
+                                              · {slot.playerTeam}
+                                            </span>
+                                          )}
+                                        </span>
+                                      ) : (
+                                        <span className="lo-slot-empty">
+                                          — empty —
+                                        </span>
+                                      )}
+                                      {slot.price !== null && (
+                                        <span className="lo-slot-price">
+                                          ${slot.price}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="dim"
+                      style={{ textAlign: "center", padding: "1rem 0" }}
+                    >
+                      {league ? "No teams yet" : "No league loaded"}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-          <DraftLog
-            rosterEntries={rosterEntries}
-            league={league}
-            allPlayers={allPlayers}
-            onRemovePick={onRemovePick}
-            onUpdatePick={onUpdatePick}
-          />
+          <div className="cc-draft-log-section">
+            <DraftLog
+              rosterEntries={rosterEntries}
+              league={league}
+              allPlayers={allPlayers}
+              onRemovePick={onRemovePick}
+              onUpdatePick={onUpdatePick}
+            />
+          </div>
         </div>
       )}
 
       {activeTab === "Standings" && (
-        <div className="cc-panel-content">
-          {rosterEntries.length === 0 ? (
-            <div
-              className="dim"
-              style={{ textAlign: "center", padding: "1.5rem 0" }}
-            >
-              No picks logged yet
-            </div>
-          ) : (
-            <div className="cc-standings-scroll">
-              <table className="lo-standings-table">
-                <thead>
-                  <tr>
-                    <th className="lo-th-team">TEAM</th>
-                    {scoringCats.map((c) => (
-                      <th
-                        key={c.name}
-                        className={
-                          "lo-th-stat" +
-                          (sortCat === c.name ? " lo-th-active" : "")
-                        }
-                        onClick={() => toggleSort(c.name)}
-                      >
-                        {c.name}
-                        {sortCat === c.name ? (
-                          sortAsc ? (
-                            <ChevronUp size={10} />
-                          ) : (
-                            <ChevronDown size={10} />
-                          )
-                        ) : null}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedProjStandings.map((row, idx) => (
-                    <tr
-                      key={row.teamName}
-                      className={idx % 2 === 0 ? "lo-tr-even" : ""}
-                    >
-                      <td className="lo-td-team">{row.teamName}</td>
-                      {scoringCats.map((c) => {
-                        const rank = rankMaps[c.name]?.get(row.teamName) ?? 1;
-                        const colorClass = rankColor(
-                          rank,
-                          sortedProjStandings.length,
-                        );
-                        const val = row.stats[c.name] ?? 0;
-                        return (
-                          <td
-                            key={c.name}
-                            className={`lo-td-stat ${colorClass}`}
-                          >
-                            {formatStatCell(c.name, val)}
-                          </td>
-                        );
-                      })}
+        <div className="cc-panel-content cc-panel-content--log">
+          <div className="cc-panel-above-log">
+            {rosterEntries.length === 0 ? (
+              <div
+                className="dim"
+                style={{ textAlign: "center", padding: "1.5rem 0" }}
+              >
+                No picks logged yet
+              </div>
+            ) : (
+              <div className="cc-standings-scroll">
+                <table className="lo-standings-table">
+                  <thead>
+                    <tr>
+                      <th className="lo-th-team">TEAM</th>
+                      {scoringCats.map((c) => (
+                        <th
+                          key={c.name}
+                          className={
+                            "lo-th-stat" +
+                            (sortCat === c.name ? " lo-th-active" : "")
+                          }
+                          onClick={() => toggleSort(c.name)}
+                        >
+                          {c.name}
+                          {sortCat === c.name ? (
+                            sortAsc ? (
+                              <ChevronUp size={10} />
+                            ) : (
+                              <ChevronDown size={10} />
+                            )
+                          ) : null}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <DraftLog
-            rosterEntries={rosterEntries}
-            league={league}
-            allPlayers={allPlayers}
-            onRemovePick={onRemovePick}
-            onUpdatePick={onUpdatePick}
-          />
+                  </thead>
+                  <tbody>
+                    {sortedProjStandings.map((row, idx) => (
+                      <tr
+                        key={row.teamName}
+                        className={idx % 2 === 0 ? "lo-tr-even" : ""}
+                      >
+                        <td className="lo-td-team">{row.teamName}</td>
+                        {scoringCats.map((c) => {
+                          const rank = rankMaps[c.name]?.get(row.teamName) ?? 1;
+                          const colorClass = rankColor(
+                            rank,
+                            sortedProjStandings.length,
+                          );
+                          const val = row.stats[c.name] ?? 0;
+                          return (
+                            <td
+                              key={c.name}
+                              className={`lo-td-stat ${colorClass}`}
+                            >
+                              {formatStatCell(c.name, val)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="cc-draft-log-section">
+            <DraftLog
+              rosterEntries={rosterEntries}
+              league={league}
+              allPlayers={allPlayers}
+              onRemovePick={onRemovePick}
+              onUpdatePick={onUpdatePick}
+            />
+          </div>
         </div>
       )}
     </div>

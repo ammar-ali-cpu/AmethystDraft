@@ -234,6 +234,17 @@
   min-height: 0;
 }
 
+.lo-standings-wrap::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.lo-standings-wrap::-webkit-scrollbar-track { background: transparent; }
+.lo-standings-wrap::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 2px;
+}
+.lo-standings-wrap::-webkit-scrollbar-corner { background: transparent; }
+
 .lo-standings-table {
   width: 100%;
   border-collapse: collapse;
@@ -256,6 +267,10 @@
   letter-spacing: 0.08em;
   border-bottom: 1px solid rgba(139, 92, 246, 0.12);
   white-space: nowrap;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #0a0714;
 }
 
 .lo-th-stat {
@@ -297,6 +312,14 @@
   font-size: 0.73rem;
   white-space: nowrap;
   border-bottom: 1px solid rgba(139, 92, 246, 0.06);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #0a0714;
+}
+
+.lo-tr-even .lo-td-team {
+  background: rgba(10, 7, 20, 1);
 }
 
 .lo-td-stat {
@@ -351,11 +374,21 @@
 
 /* ─── Draft log ──────────────────────────────────────────────────────────── */
 
+/* Draft log section fills all height below the standings */
+.lo-draft-log-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .lo-dl-list {
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-height: 280px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 4px 0 8px;
 }

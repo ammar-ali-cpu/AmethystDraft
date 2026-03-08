@@ -236,7 +236,7 @@ function getProjStat(
 
 // Rate stats that need averaging rather than summing
 const RATE_BATTING = new Set(["AVG", "OBP", "SLG"]);
-const RATE_PITCHING = new Set(["ERA", "WHIP", "WALKS + HITS PER IP"]);
+const RATE_PITCHING = new Set(["ERA", "WHIP", "WALKS + HITS PER IP", "W+H/IP"]);
 
 export function buildProjectedStandings(
   teamNames: string[],
@@ -296,7 +296,14 @@ export function buildProjectedStandings(
 
 // ─── Standings display helpers ────────────────────────────────────────────────
 
+/** Extracts the abbreviation from labels like "Walks + Hits per IP (WHIP)" → "WHIP" */
+export function normalizeCatName(name: string): string {
+  const m = name.match(/\(([^)]+)\)$/);
+  return m ? m[1] : name;
+}
+
 export function formatStatCell(catName: string, value: number): string {
+  if (value === 0) return "\u2014";
   const n = catName.toUpperCase();
   if (n === "AVG" || n === "OBP" || n === "SLG") return value.toFixed(3);
   if (n === "ERA" || n === "WHIP") return value.toFixed(2);

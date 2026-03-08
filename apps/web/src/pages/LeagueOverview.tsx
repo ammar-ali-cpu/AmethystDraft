@@ -15,6 +15,7 @@ import {
   formatStatCell,
   rankColor,
   computeRanks,
+  normalizeCatName,
 } from "./commandCenterUtils";
 import "./LeagueOverview.css";
 
@@ -254,9 +255,10 @@ export default function LeagueOverview() {
 
   const scoringCats = useMemo(
     () =>
-      league?.scoringCategories?.length
+      (league?.scoringCategories?.length
         ? league.scoringCategories
-        : FALLBACK_CATS,
+        : FALLBACK_CATS
+      ).map((c) => ({ ...c, name: normalizeCatName(c.name) })),
     [league],
   );
 
@@ -440,12 +442,14 @@ export default function LeagueOverview() {
             </table>
           </div>
 
-          {entries.length > 0 ? (
-            <>
-              <div className="lo-section-header">
-                <span className="lo-section-title">DRAFT LOG</span>
-                <span className="lo-section-meta">{entries.length} picks</span>
-              </div>
+          <div className="lo-draft-log-section">
+            <div className="lo-section-header">
+              <span className="lo-section-title">DRAFT LOG</span>
+              <span className="lo-section-meta">
+                {entries.length > 0 ? `${entries.length} picks` : "0 picks"}
+              </span>
+            </div>
+            {entries.length > 0 ? (
               <div className="lo-dl-list">
                 {[...entries]
                   .sort(
@@ -482,16 +486,10 @@ export default function LeagueOverview() {
                     );
                   })}
               </div>
-            </>
-          ) : (
-            <>
-              <div className="lo-section-header">
-                <span className="lo-section-title">DRAFT LOG</span>
-                <span className="lo-section-meta">0 picks</span>
-              </div>
+            ) : (
               <div className="lo-dl-empty">No picks yet.</div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
       {toast && (

@@ -29,6 +29,13 @@
   scrollbar-color: #9070b8 rgba(15, 10, 25, 0.8);
 }
 
+/* Left panel is a flex column so the draft log can fill remaining height */
+.cc-left {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
 .cc-left::-webkit-scrollbar,
 .cc-center::-webkit-scrollbar,
 .cc-right::-webkit-scrollbar { width: 6px; }
@@ -58,12 +65,48 @@
 
 .cc-panel-content {
   padding: 0 0.75rem 1rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Panel variant for tabs that contain a draft log — flex column, no own scroll */
+.cc-panel-content--log {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+  padding: 0;
+}
+
+/* Scrollable area above the draft log (teams table, standings) */
+.cc-panel-above-log {
+  overflow-y: auto;
+  flex-shrink: 1;
+  min-height: 0;
+  padding: 0 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: #9070b8 rgba(15, 10, 25, 0.8);
+}
+.cc-panel-above-log::-webkit-scrollbar { width: 4px; }
+.cc-panel-above-log::-webkit-scrollbar-track { background: rgba(15, 10, 25, 0.8); }
+.cc-panel-above-log::-webkit-scrollbar-thumb { background: #9070b8; border-radius: 3px; }
+
+/* Draft log section fills all remaining height */
+.cc-draft-log-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 0.75rem;
+  border-top: 1px solid rgba(139, 92, 246, 0.08);
 }
 
 /* ─── Tabs ─────────────────────────────────────────────────────────────────── */
 
 .cc-tabs {
   display: flex;
+  flex-shrink: 0;
   border-bottom: 1px solid rgba(139, 92, 246, 0.12);
   padding: 0 0.75rem;
   gap: 0;
@@ -1029,7 +1072,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-height: 280px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
