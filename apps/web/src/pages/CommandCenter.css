@@ -210,6 +210,13 @@
 .player-auction-card {
   padding: 1rem 1.25rem 1.5rem;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.player-auction-card .log-result-section {
+  margin-top: auto;
+  padding-top: 1rem;
 }
 
 .pac-header {
@@ -462,54 +469,7 @@
 .delta-badge { font-weight: 700; font-size: 0.78rem; }
 .pace-badge  { font-weight: 700; font-size: 0.78rem; }
 
-/* Live price */
-
-.live-price-row {
-  display: flex;
-  gap: 1.5rem;
-  margin-top: 0.5rem;
-}
-
-/* .lp-block {} */
-.lp-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; color: #4a3a60; text-transform: uppercase; }
-.lp-val   { font-size: 1rem; font-weight: 700; color: #e2d9f3; margin-top: 0.2rem; }
-.lp-val.bid { color: #6b4fa0; }
-.lp-val.green { color: #22c55e; }
-
-.bid-row {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  align-items: center;
-}
-
-.bid-input {
-  flex: 1;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: 8px;
-  padding: 0.55rem 0.75rem;
-  font-size: 0.82rem;
-  color: #c4b5d4;
-  outline: none;
-  font-family: 'DM Sans', sans-serif;
-}
-
-.bid-input::placeholder { color: #4a3a60; }
-
-.bid-star-btn {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: 8px;
-  width: 36px;
-  height: 36px;
-  color: #6b4fa0;
-  cursor: pointer;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* ─── Log result ────────────────────────────────────────────────────────── */
 
 /* Log result */
 

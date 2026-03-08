@@ -69,7 +69,7 @@ export function AuctionCenter({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const [currentBid, setCurrentBid] = useState("");
+
   const [wonBy, setWonBy] = useState("");
   const [finalPrice, setFinalPrice] = useState("");
   const [draftedToSlot, setDraftedToSlot] = useState("");
@@ -145,7 +145,6 @@ export function AuctionCenter({
     const playerName = selectedPlayer.name;
     setSubmitting(true);
     setSelectedPlayer(null);
-    setCurrentBid("");
     setFinalPrice("");
     try {
       await addRosterEntry(
@@ -234,27 +233,6 @@ export function AuctionCenter({
       })()
     : "--";
 
-  // Live price derived values
-  const isP =
-    selectedPlayer !== null &&
-    ["SP", "RP", "P"].includes(selectedPlayer.position);
-  const posEntries = rosterEntries.filter(
-    (e) =>
-      allPlayers.find((p) => p.id === e.externalPlayerId)?.position ===
-      selectedPlayer?.position,
-  );
-  const marketAvg = selectedPlayer
-    ? posEntries.length
-      ? Math.round(
-          posEntries.reduce((s, e) => s + e.price, 0) / posEntries.length,
-        )
-      : selectedPlayer.value
-    : 0;
-  const targetLow = selectedPlayer
-    ? Math.max(1, Math.round(marketAvg * 0.93))
-    : 0;
-  const targetHigh = selectedPlayer ? Math.round(marketAvg * 1.1) : 0;
-
   // Category impact rows
   const catImpactRows = (() => {
     if (!selectedPlayer || !league?.scoringCategories)
@@ -266,7 +244,11 @@ export function AuctionCenter({
         improved: boolean;
       }>;
     const relevantCats = league.scoringCategories.filter((cat) =>
-      isP ? cat.type === "pitching" : cat.type === "batting",
+      selectedPlayer
+        ? ["SP", "RP", "P"].includes(selectedPlayer.position)
+          ? cat.type === "pitching"
+          : cat.type === "batting"
+        : false,
     );
     return relevantCats.map((cat) => {
       const isRate = ["ERA", "WHIP"].includes(cat.name.toUpperCase());
@@ -736,42 +718,8 @@ export function AuctionCenter({
             </>
           )}
 
-          {/* Live price */}
-          <div className="pac-section-label" style={{ marginTop: "1rem" }}>
-            LIVE PRICE
-          </div>
-          <div className="live-price-row">
-            <div className="lp-block">
-              <div className="lp-label">CURRENT HIGH BID</div>
-              <div className="lp-val bid">
-                {currentBid ? `$${currentBid}` : "$—"}
-              </div>
-            </div>
-            <div className="lp-block">
-              <div className="lp-label">MARKET AVG</div>
-              <div className="lp-val">${marketAvg}</div>
-            </div>
-            <div className="lp-block">
-              <div className="lp-label">TARGET RANGE</div>
-              <div className="lp-val green">
-                ${targetLow}–${targetHigh}
-              </div>
-            </div>
-          </div>
-
-          <div className="bid-row">
-            <input
-              type="text"
-              className="bid-input"
-              placeholder="$ Current price..."
-              value={currentBid}
-              onChange={(e) => setCurrentBid(e.target.value)}
-            />
-            <button className="bid-star-btn">☆</button>
-          </div>
-
           {/* Log result */}
-          <div className="pac-section-label" style={{ marginTop: "1rem" }}>
+          <div className="pac-section-label" style={{ marginTop: "auto", paddingTop: "1rem" }}>
             LOG RESULT
           </div>
           <div className="log-result-grid">
