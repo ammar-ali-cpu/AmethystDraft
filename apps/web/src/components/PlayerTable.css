@@ -392,7 +392,6 @@
   font-family: DM Sans, sans-serif;
   font-size: 0.8rem;
   min-width: 1000px;
-  table-layout: fixed;
 }
 
 .pt-table thead {

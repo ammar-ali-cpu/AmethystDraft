@@ -807,21 +807,6 @@ export default function PlayerTable({
       {/* ── Table ── */}
       <div className="pt-scroll">
         <table className="pt-table">
-          <colgroup>
-            <col style={{ width: "44px" }} /> {/* rank */}
-            <col style={{ width: "32px" }} /> {/* star */}
-            <col style={{ width: "220px" }} /> {/* player */}
-            <col style={{ width: "52px" }} /> {/* pos */}
-            <col style={{ width: "52px" }} /> {/* team */}
-            <col style={{ width: "52px" }} /> {/* tier */}
-            <col style={{ width: "56px" }} /> {/* adp */}
-            <col style={{ width: "80px" }} /> {/* proj $ / val */}
-            <col style={{ width: "76px" }} /> {/* val diff */}
-            {Array.from({ length: numActiveCols }, (_, i) => (
-              <col key={i} style={{ width: "72px" }} />
-            ))}
-            <col /> {/* notes – fills remainder */}
-          </colgroup>
           <thead>
             <tr>
               <th className="th-rank">Rank</th>

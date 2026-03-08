@@ -156,6 +156,9 @@ function projectBatting(
     const ab = Number(s.atBats ?? 0);
     if (ab < 50) continue;
     const w = W[i] ?? 1;
+    wTotal += w;
+    wAB += ab * w;
+    wH += Number(s.hits ?? 0) * w;
     wHR += Number(s.homeRuns ?? 0) * w;
     wRBI += Number(s.rbi ?? 0) * w;
     wRuns += Number(s.runs ?? 0) * w;
@@ -210,6 +213,8 @@ function projectPitching(
     const sv = Number(s.saves ?? 0);
     if (ip < 15 && sv < 3) continue;
     const w = W[i] ?? 1;
+    wTotal += w;
+    wIP += ip * w;
     wER += Number(s.earnedRuns ?? 0) * w;
     wBR += (Number(s.hits ?? 0) + Number(s.baseOnBalls ?? 0)) * w;
     wK += Number(s.strikeOuts ?? 0) * w;

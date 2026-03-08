@@ -436,6 +436,9 @@ export function AuctionCenter({
                   <PosBadge pos={p.position} />
                   <span className="cc-dd-name">
                     {p.name}
+                    {p.injuryStatus && (
+                      <span className="pt-il-badge">{p.injuryStatus.replace("DL", "IL")}</span>
+                    )}
                     {isInWatchlist(p.id) && (
                       <span className="cc-dd-wl" title="On your watchlist">
                         ★
@@ -473,6 +476,9 @@ export function AuctionCenter({
               />
               <h1 className="pac-name">
                 {selectedPlayer.name}
+                {selectedPlayer.injuryStatus && (
+                  <span className="pt-il-badge">{selectedPlayer.injuryStatus.replace("DL", "IL")}</span>
+                )}
                 {isInWatchlist(selectedPlayer.id) && (
                   <span className="pac-wl-badge" title="On your watchlist">
                     ★
