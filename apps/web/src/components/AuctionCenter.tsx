@@ -294,12 +294,15 @@ export function AuctionCenter({
             neutral: true,
           };
         }
-        // For ERA/WHIP, lower is better — positive delta means player improves the team
-        const delta = +(teamPace - playerStat).toFixed(2);
+        // For ERA/WHIP, lower is better — positive delta means player improves the team.
+        // Compute the actual new team average after including this player.
+        const sum = vals.reduce((a, b) => a + b, 0);
+        const newTeamAvg = +((sum + playerStat) / (vals.length + 1)).toFixed(2);
+        const delta = +(teamPace - newTeamAvg).toFixed(2);
         return {
           name: cat.name,
           teamPaceStr: teamPace.toFixed(2),
-          withPlayerStr: playerStat.toFixed(2),
+          withPlayerStr: newTeamAvg.toFixed(2),
           deltaStr: delta > 0 ? `+${delta.toFixed(2)}` : delta.toFixed(2),
           improved: delta > 0,
           neutral: delta === 0,

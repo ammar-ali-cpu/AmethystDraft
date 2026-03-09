@@ -1,9 +1,12 @@
 import { useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router";
 import { Minus, Plus, Star, X } from "lucide-react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useWatchlist } from "../contexts/WatchlistContext";
 import { usePlayerNotes } from "../contexts/PlayerNotesContext";
+import { useSelectedPlayer } from "../contexts/SelectedPlayerContext";
 import type { WatchlistPlayer } from "../api/watchlist";
+import type { Player } from "../types/player";
 import PosBadge from "../components/PosBadge";
 import "./MyDraft.css";
 
@@ -24,7 +27,7 @@ const POSITION_PLAN: Array<{ pos: string; slots: number; target: number }> = [
   { pos: "BN", slots: 4, target: 8 },
 ];
 
-const PITCHER_POSITIONS = new Set(["SP", "RP"]);
+const PITCHER_POSITIONS = new Set(["SP", "RP", "P"]);
 
 type ViewFilter = "all" | "hitters" | "pitchers";
 
@@ -45,8 +48,30 @@ function getPriority(player: WatchlistPlayer): "High" | "Medium" | "Low" {
   return "Low";
 }
 
+function watchlistToPlayer(p: WatchlistPlayer): Player {
+  return {
+    id: p.id,
+    mlbId: 0,
+    name: p.name,
+    team: p.team,
+    position: p.position,
+    positions: p.positions,
+    age: 0,
+    adp: p.adp,
+    value: p.value,
+    tier: p.tier,
+    headshot: "",
+    outlook: "",
+    stats: {},
+    projection: {},
+  };
+}
+
 export default function MyDraft() {
   usePageTitle("My Draft");
+  const { id: leagueId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { setSelectedPlayer } = useSelectedPlayer();
   const { watchlist, removeFromWatchlist } = useWatchlist();
   const { getNote, setNote } = usePlayerNotes();
   const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
@@ -427,7 +452,16 @@ export default function MyDraft() {
                           : String(targetVal);
 
                       return (
-                        <tr key={player.id}>
+                        <tr
+                          key={player.id}
+                          className="watchlist-row watchlist-row--clickable"
+                          onClick={() => {
+                            setSelectedPlayer(watchlistToPlayer(player));
+                            void navigate(
+                              `/leagues/${leagueId}/command-center`,
+                            );
+                          }}
+                        >
                           <td>
                             <div className="player-main">
                               <Star
@@ -465,7 +499,7 @@ export default function MyDraft() {
                           <td className="money">
                             ${Math.round(player.value ?? 0)}
                           </td>
-                          <td>
+                          <td onClick={(e) => e.stopPropagation()}>
                             <div className="target-input-group">
                               <button
                                 className="target-stepper"
@@ -535,7 +569,7 @@ export default function MyDraft() {
                               </button>
                             </div>
                           </td>
-                          <td>
+                          <td onClick={(e) => e.stopPropagation()}>
                             <select
                               className={`priority-select ${priority.toLowerCase()}`}
                               value={priority}
@@ -551,7 +585,10 @@ export default function MyDraft() {
                               <option value="Low">Low</option>
                             </select>
                           </td>
-                          <td className="td-note">
+                          <td
+                            className="td-note"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <input
                               className="watchlist-note-input"
                               value={getNote(player.id)}
@@ -564,7 +601,7 @@ export default function MyDraft() {
                               }}
                             />
                           </td>
-                          <td>
+                          <td onClick={(e) => e.stopPropagation()}>
                             <button
                               className="unstar-btn"
                               type="button"

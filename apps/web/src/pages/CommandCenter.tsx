@@ -1055,6 +1055,14 @@ export default function CommandCenter() {
       .catch(console.error);
   }, [league?.posEligibilityThreshold, league?.playerPool]);
 
+  // If selectedPlayer was set from the watchlist (stub with mlbId 0 / no real data),
+  // replace it with the full player once allPlayers is loaded.
+  useEffect(() => {
+    if (!selectedPlayer || selectedPlayer.mlbId !== 0) return;
+    const full = allPlayers.find((p) => p.id === selectedPlayer.id);
+    if (full) setSelectedPlayer(full);
+  }, [allPlayers, selectedPlayer, setSelectedPlayer]);
+
   const draftedIds = useMemo(
     () => new Set(rosterEntries.map((e) => e.externalPlayerId)),
     [rosterEntries],

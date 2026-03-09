@@ -499,6 +499,13 @@
   padding: 1.25rem;
 }
 
+.watchlist-row--clickable {
+  cursor: pointer;
+}
+.watchlist-row--clickable:hover td {
+  background: rgba(139, 92, 246, 0.06);
+}
+
 /* Bottom notes strip spanning page width */
 .notes-strip {
   position: relative;

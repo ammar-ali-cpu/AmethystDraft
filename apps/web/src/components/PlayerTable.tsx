@@ -936,7 +936,10 @@ export default function PlayerTable({
                   >
                     <td className="td-rank">{index + 1}</td>
 
-                    <td className="td-star" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="td-star"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         className={"btn-star " + (isStarred ? "starred" : "")}
                         onClick={(e) => {
